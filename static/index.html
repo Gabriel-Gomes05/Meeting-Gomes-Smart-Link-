@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MeetingScript - Transcritor de Reunioes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-mark">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8" y1="23" x2="16" y2="23"/>
+          </svg>
+        </div>
+        <span class="logo-text">MeetingScript</span>
+      </div>
+
+      <nav class="header-nav">
+        <button id="navTranscricao" class="nav-tab active">Transcricao</button>
+        <button id="navBiblioteca" class="nav-tab">Biblioteca de Prompts</button>
+      </nav>
+
+      <div class="header-right">
+        <div id="apiStatus" class="api-badge">
+          <span class="api-dot"></span>
+          <span id="apiStatusText">Verificando...</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div id="viewTranscricao">
+    <div class="hero">
+      <h1 class="hero-title">Transcreva reunioes com<br /><span class="gradient-text">identificacao de falantes</span></h1>
+      <p class="hero-sub">Grave o microfone, som do sistema ou uma aba especifica. A transcricao identifica automaticamente quem esta falando.</p>
+    </div>
+
+    <main class="main">
+      <div class="step-wrapper">
+        <div class="step-number">1</div>
+        <section class="card">
+          <h2 class="card-title">Fonte de audio</h2>
+          <p class="card-desc">Selecione o que deseja capturar durante a reuniao.</p>
+
+          <div class="source-grid">
+            <label class="source-card">
+              <input type="radio" name="source" value="mic" checked />
+              <div class="source-card-inner">
+                <div class="source-card-icon">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                    <line x1="12" y1="19" x2="12" y2="23"/>
+                    <line x1="8" y1="23" x2="16" y2="23"/>
+                  </svg>
+                </div>
+                <div class="source-card-info">
+                  <span class="source-card-label">Microfone</span>
+                  <span class="source-card-desc">Captura sua voz pelo microfone</span>
+                </div>
+                <div class="source-card-check">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </div>
+              </div>
+            </label>
+
+            <label class="source-card">
+              <input type="radio" name="source" value="system" />
+              <div class="source-card-inner">
+                <div class="source-card-icon">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2"/>
+                    <line x1="8" y1="21" x2="16" y2="21"/>
+                    <line x1="12" y1="17" x2="12" y2="21"/>
+                  </svg>
+                </div>
+                <div class="source-card-info">
+                  <span class="source-card-label">Aba / Sistema</span>
+                  <span class="source-card-desc">Captura o som de uma aba ou app</span>
+                </div>
+                <div class="source-card-check">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </div>
+              </div>
+            </label>
+
+            <label class="source-card">
+              <input type="radio" name="source" value="both" />
+              <div class="source-card-inner">
+                <div class="source-card-icon">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="9" cy="12" r="4"/>
+                    <circle cx="15" cy="12" r="4"/>
+                  </svg>
+                </div>
+                <div class="source-card-info">
+                  <span class="source-card-label">Ambos</span>
+                  <span class="source-card-desc">Microfone + aba ao mesmo tempo</span>
+                </div>
+                <div class="source-card-check">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </div>
+              </div>
+            </label>
+          </div>
+
+          <div class="info-banner" id="tabBanner" hidden>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span>Ao iniciar a gravacao, marque <strong>"Compartilhar audio da aba"</strong> no seletor do navegador.</span>
+          </div>
+        </section>
+      </div>
+
+      <div class="step-wrapper">
+        <div class="step-number">2</div>
+        <section class="card">
+          <h2 class="card-title">Participantes</h2>
+          <p class="card-desc">Informe quantas pessoas estao na reuniao para melhorar a identificacao.</p>
+          <div class="speakers-grid" id="speakersGrid">
+            <label class="speaker-pill"><input type="radio" name="speakers" value="0" checked /><span>Auto</span></label>
+            <label class="speaker-pill"><input type="radio" name="speakers" value="2" /><span>2</span></label>
+            <label class="speaker-pill"><input type="radio" name="speakers" value="3" /><span>3</span></label>
+            <label class="speaker-pill"><input type="radio" name="speakers" value="4" /><span>4</span></label>
+            <label class="speaker-pill"><input type="radio" name="speakers" value="5" /><span>5</span></label>
+            <label class="speaker-pill"><input type="radio" name="speakers" value="6" /><span>6+</span></label>
+          </div>
+        </section>
+      </div>
+
+      <div class="step-wrapper">
+        <div class="step-number">3</div>
+        <section class="card">
+          <h2 class="card-title">Gravar</h2>
+          <p class="card-desc">Inicie a gravacao quando estiver pronto.</p>
+
+          <div class="prompt-selector-row">
+            <span class="prompt-selector-label">Resumo com:</span>
+            <div class="prompt-selector-wrap">
+              <select id="promptSelect" class="prompt-select"></select>
+              <button type="button" id="btnGoToLibrary" class="btn-manage-prompts" title="Gerenciar biblioteca de prompts">Gerenciar</button>
+            </div>
+          </div>
+
+          <div class="waveform-container" id="waveformContainer">
+            <canvas id="waveCanvas"></canvas>
+            <div class="waveform-idle" id="waveformIdle">
+              <span>Aguardando gravacao...</span>
+            </div>
+          </div>
+
+          <div class="record-controls">
+            <button id="btnRecord" class="btn-record">
+              <span class="btn-record-dot"></span>
+              Iniciar Gravacao
+            </button>
+            <div class="record-right">
+              <div class="rec-timer-wrap" id="recTimerWrap" hidden>
+                <span class="rec-live">AO VIVO</span>
+                <span id="recTimer" class="rec-timer">00:00</span>
+              </div>
+              <button id="btnStop" class="btn-stop" disabled>Parar e Transcrever</button>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="processing-card" id="processingCard" hidden>
+        <div class="processing-inner">
+          <div class="processing-anim">
+            <div class="processing-bar"></div>
+            <div class="processing-bar"></div>
+            <div class="processing-bar"></div>
+            <div class="processing-bar"></div>
+            <div class="processing-bar"></div>
+          </div>
+          <div>
+            <p class="processing-title" id="processingTitle">Enviando audio...</p>
+            <p class="processing-sub">Isso pode levar alguns instantes</p>
+          </div>
+        </div>
+      </div>
+
+      <section class="result-card" id="resultCard" hidden>
+        <div class="result-header">
+          <div>
+            <h2 class="result-title">Transcricao</h2>
+            <p class="result-meta" id="resultMeta"></p>
+          </div>
+          <div class="result-actions">
+            <button class="btn-action" id="btnSave">Salvar</button>
+            <button class="btn-action" id="btnDownload">Baixar .txt</button>
+            <button class="btn-action" id="btnCopy">Copiar</button>
+            <button class="btn-action btn-action--danger" id="btnClear">Limpar</button>
+          </div>
+        </div>
+
+        <div id="summaryBlock" class="summary-block">
+          <div class="summary-top-row">
+            <div class="summary-header">Resumo</div>
+            <div class="summary-regen-row">
+              <select id="summaryPromptSelect" class="prompt-select-sm"></select>
+              <button id="btnRegenerateSum" class="btn-regen" title="Regenerar resumo com o prompt selecionado">Regenerar</button>
+            </div>
+          </div>
+          <p id="summaryLoading" class="summary-loading" hidden>Gerando resumo...</p>
+          <p id="summaryEmpty" class="summary-empty">O resumo vai aparecer aqui assim que a transcricao for concluida.</p>
+          <ul id="summaryList" class="summary-list"></ul>
+        </div>
+
+        <div id="speakerSection" class="speaker-section" hidden>
+          <div class="transcript-header">Transcricao</div>
+          <div id="speakerLegend" class="speaker-legend"></div>
+          <div id="utteranceList" class="utterance-list"></div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <div id="viewBiblioteca" hidden>
+    <div class="lib-hero">
+      <h1 class="hero-title">Biblioteca de <span class="gradient-text">Prompts</span></h1>
+      <p class="hero-sub">Personalize como a IA resume suas reunioes.</p>
+    </div>
+
+    <div class="lib-main">
+      <div class="info-banner gemini-info" id="geminiBanner">
+        <span>
+          Para usar resumos personalizados, configure <strong>GROQ_API_KEY</strong> no arquivo <code>.env</code>.
+          Crie sua chave gratuita em <strong>console.groq.com</strong> e reinicie o servidor.
+        </span>
+      </div>
+
+      <div class="lib-toolbar">
+        <span class="lib-count" id="libCount"></span>
+        <button class="btn-new-prompt" id="btnNewPrompt">Novo Prompt</button>
+      </div>
+
+      <div class="prompt-form-card" id="promptFormCard" hidden>
+        <div class="prompt-form-header">
+          <h3 class="prompt-form-title" id="promptFormTitle">Novo Prompt</h3>
+          <button class="prompt-form-close" id="btnCloseForm" title="Fechar">X</button>
+        </div>
+        <div class="prompt-form-body">
+          <input type="hidden" id="editingPromptId" />
+          <div class="form-group">
+            <label class="form-label" for="pfName">Nome</label>
+            <input type="text" id="pfName" class="form-input" placeholder="Ex: Resumo Executivo" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="pfDesc">Descricao curta</label>
+            <input type="text" id="pfDesc" class="form-input" placeholder="Breve descricao do prompt" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="pfText">Prompt</label>
+            <textarea id="pfText" class="form-textarea" rows="5" placeholder="Escreva as instrucoes para o Gemini gerar o resumo..."></textarea>
+          </div>
+          <div class="form-actions">
+            <button class="btn-save-prompt" id="btnSavePrompt">Salvar</button>
+            <button class="btn-cancel-prompt" id="btnCancelPrompt">Cancelar</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="promptList" class="prompt-list"></div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <p>Powered by <strong>AssemblyAI</strong> · Resumos via <strong>Google Gemini</strong></p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

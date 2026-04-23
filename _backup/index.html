@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MeetingScript — Transcritor de Reuniões</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ── HEADER ─────────────────────────────────────────── -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-mark">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8" y1="23" x2="16" y2="23"/>
+          </svg>
+        </div>
+        <span class="logo-text">MeetingScript</span>
+      </div>
+
+      <div class="header-right">
+        <div id="apiStatus" class="api-badge">
+          <span class="api-dot"></span>
+          <span id="apiStatusText">Verificando...</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── HERO ───────────────────────────────────────────── -->
+  <div class="hero">
+    <h1 class="hero-title">Transcreva reuniões com<br/><span class="gradient-text">identificação de falantes</span></h1>
+    <p class="hero-sub">Grave o microfone, som do sistema ou uma aba específica. Nossa IA transcreve e identifica automaticamente quem está falando.</p>
+  </div>
+
+  <!-- ── MAIN ───────────────────────────────────────────── -->
+  <main class="main">
+
+    <!-- PASSO 1 — Fonte -->
+    <div class="step-wrapper">
+      <div class="step-number">1</div>
+      <section class="card">
+        <h2 class="card-title">Fonte de áudio</h2>
+        <p class="card-desc">Selecione o que deseja capturar durante a reunião.</p>
+
+        <div class="source-grid">
+
+          <label class="source-card">
+            <input type="radio" name="source" value="mic" checked />
+            <div class="source-card-inner">
+              <div class="source-card-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="23"/>
+                  <line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
+              </div>
+              <div class="source-card-info">
+                <span class="source-card-label">Microfone</span>
+                <span class="source-card-desc">Captura sua voz pelo microfone</span>
+              </div>
+              <div class="source-card-check">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </div>
+            </div>
+          </label>
+
+          <label class="source-card">
+            <input type="radio" name="source" value="system" />
+            <div class="source-card-inner">
+              <div class="source-card-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="3" width="20" height="14" rx="2"/>
+                  <line x1="8" y1="21" x2="16" y2="21"/>
+                  <line x1="12" y1="17" x2="12" y2="21"/>
+                </svg>
+              </div>
+              <div class="source-card-info">
+                <span class="source-card-label">Aba / Sistema</span>
+                <span class="source-card-desc">Captura o som de uma aba ou app</span>
+              </div>
+              <div class="source-card-check">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </div>
+            </div>
+          </label>
+
+          <label class="source-card">
+            <input type="radio" name="source" value="both" />
+            <div class="source-card-inner">
+              <div class="source-card-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="9" cy="12" r="4"/>
+                  <circle cx="15" cy="12" r="4"/>
+                </svg>
+              </div>
+              <div class="source-card-info">
+                <span class="source-card-label">Ambos</span>
+                <span class="source-card-desc">Microfone + aba em simultâneo</span>
+              </div>
+              <div class="source-card-check">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </div>
+            </div>
+          </label>
+
+        </div>
+
+        <div class="info-banner" id="tabBanner" hidden>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span>Ao iniciar a gravação, o navegador abrirá um <strong>seletor de aba ou janela</strong>. Marque a opção <em>"Compartilhar áudio da aba"</em> antes de confirmar.</span>
+        </div>
+      </section>
+    </div>
+
+    <!-- PASSO 2 — Participantes -->
+    <div class="step-wrapper">
+      <div class="step-number">2</div>
+      <section class="card">
+        <h2 class="card-title">Participantes</h2>
+        <p class="card-desc">Informe quantas pessoas estão na reunião para identificação mais precisa.</p>
+        <div class="speakers-grid" id="speakersGrid">
+          <label class="speaker-pill">
+            <input type="radio" name="speakers" value="0" checked />
+            <span>Auto</span>
+          </label>
+          <label class="speaker-pill">
+            <input type="radio" name="speakers" value="2" />
+            <span>2</span>
+          </label>
+          <label class="speaker-pill">
+            <input type="radio" name="speakers" value="3" />
+            <span>3</span>
+          </label>
+          <label class="speaker-pill">
+            <input type="radio" name="speakers" value="4" />
+            <span>4</span>
+          </label>
+          <label class="speaker-pill">
+            <input type="radio" name="speakers" value="5" />
+            <span>5</span>
+          </label>
+          <label class="speaker-pill">
+            <input type="radio" name="speakers" value="6" />
+            <span>6+</span>
+          </label>
+        </div>
+        <div class="info-banner" style="margin-top:14px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span>Informar o número exato de participantes melhora <strong>muito</strong> a identificação de quem está falando.</span>
+        </div>
+      </section>
+    </div>
+
+    <!-- PASSO 3 — Idioma -->
+    <div class="step-wrapper">
+      <div class="step-number">3</div>
+      <section class="card">
+        <h2 class="card-title">Idioma</h2>
+        <p class="card-desc">Selecione o idioma principal da reunião para melhor precisão.</p>
+        <div class="lang-grid">
+          <label class="lang-card">
+            <input type="radio" name="lang" value="pt" checked />
+            <span class="lang-flag">🇧🇷</span>
+            <span class="lang-name">Português</span>
+          </label>
+          <label class="lang-card">
+            <input type="radio" name="lang" value="en" />
+            <span class="lang-flag">🇺🇸</span>
+            <span class="lang-name">English</span>
+          </label>
+          <label class="lang-card">
+            <input type="radio" name="lang" value="es" />
+            <span class="lang-flag">🇪🇸</span>
+            <span class="lang-name">Español</span>
+          </label>
+          <label class="lang-card">
+            <input type="radio" name="lang" value="fr" />
+            <span class="lang-flag">🇫🇷</span>
+            <span class="lang-name">Français</span>
+          </label>
+          <label class="lang-card">
+            <input type="radio" name="lang" value="de" />
+            <span class="lang-flag">🇩🇪</span>
+            <span class="lang-name">Deutsch</span>
+          </label>
+        </div>
+      </section>
+    </div>
+
+    <!-- PASSO 4 — Gravar -->
+    <div class="step-wrapper">
+      <div class="step-number">4</div>
+      <section class="card">
+        <h2 class="card-title">Gravar</h2>
+        <p class="card-desc">Inicie a gravação quando estiver pronto.</p>
+
+        <!-- Visualizador de ondas -->
+        <div class="waveform-container" id="waveformContainer">
+          <canvas id="waveCanvas"></canvas>
+          <div class="waveform-idle" id="waveformIdle">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+              <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+            <span>Aguardando gravação...</span>
+          </div>
+        </div>
+
+        <!-- Controles -->
+        <div class="record-controls">
+          <button id="btnRecord" class="btn-record">
+            <span class="btn-record-dot"></span>
+            Iniciar Gravação
+          </button>
+
+          <div class="record-right">
+            <div class="rec-timer-wrap" id="recTimerWrap" hidden>
+              <span class="rec-live">● AO VIVO</span>
+              <span id="recTimer" class="rec-timer">00:00</span>
+            </div>
+            <button id="btnStop" class="btn-stop" disabled>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="4" y="4" width="16" height="16" rx="2"/>
+              </svg>
+              Parar e Transcrever
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- PROCESSANDO -->
+    <div class="processing-card" id="processingCard" hidden>
+      <div class="processing-inner">
+        <div class="processing-anim">
+          <div class="processing-bar"></div>
+          <div class="processing-bar"></div>
+          <div class="processing-bar"></div>
+          <div class="processing-bar"></div>
+          <div class="processing-bar"></div>
+        </div>
+        <div>
+          <p class="processing-title" id="processingTitle">Enviando áudio...</p>
+          <p class="processing-sub">Isso pode levar alguns instantes</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESULTADO -->
+    <section class="result-card" id="resultCard" hidden>
+
+      <div class="result-header">
+        <div>
+          <h2 class="result-title">Transcrição</h2>
+          <p class="result-meta" id="resultMeta"></p>
+        </div>
+        <div class="result-actions">
+          <button class="btn-action" id="btnSave">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+              <polyline points="17 21 17 13 7 13 7 21"/>
+              <polyline points="7 3 7 8 15 8"/>
+            </svg>
+            Salvar
+          </button>
+          <button class="btn-action" id="btnDownload">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Baixar .txt
+          </button>
+          <button class="btn-action" id="btnCopy">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            Copiar
+          </button>
+          <button class="btn-action btn-action--danger" id="btnClear">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+              <path d="M10 11v6"/><path d="M14 11v6"/>
+              <path d="M9 6V4h6v2"/>
+            </svg>
+            Limpar
+          </button>
+        </div>
+      </div>
+
+      <!-- Resumo da reunião -->
+      <div id="summaryBlock" class="summary-block" hidden>
+        <div class="summary-header">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+            <polyline points="10 9 9 9 8 9"/>
+          </svg>
+          Resumo da reunião
+        </div>
+        <ul id="summaryList" class="summary-list"></ul>
+      </div>
+
+      <!-- Legenda de falantes -->
+      <div id="speakerLegend" class="speaker-legend"></div>
+
+      <!-- Lista de falas -->
+      <div id="utteranceList" class="utterance-list"></div>
+
+      <!-- Fallback: texto corrido -->
+      <div id="fullTextBlock" class="full-text-block" hidden>
+        <p id="fullText"></p>
+      </div>
+
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <p>Powered by <strong>AssemblyAI</strong> · Transcrição com IA e identificação de falantes</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

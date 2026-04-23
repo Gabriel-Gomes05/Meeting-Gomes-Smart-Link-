@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+*.pyc
+
+.env
+
+server.log
+uvicorn.out.log
+uvicorn.err.log
+
+transcricoes/
