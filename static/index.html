@@ -27,6 +27,7 @@
       <nav class="header-nav">
         <button id="navTranscricao" class="nav-tab active">Transcricao</button>
         <button id="navBiblioteca" class="nav-tab">Biblioteca de Prompts</button>
+        <button id="navHistorico" class="nav-tab">Histórico</button>
       </nav>
 
       <div class="header-right">
@@ -283,10 +284,25 @@
     </div>
   </div>
 
+  <div id="viewHistorico" hidden>
+    <div class="lib-hero">
+      <h1 class="hero-title">Histórico de <span class="gradient-text">Transcrições</span></h1>
+      <p class="hero-sub">Suas transcrições são salvas automaticamente aqui após cada sessão.</p>
+    </div>
+    <div class="lib-main">
+      <div class="lib-toolbar">
+        <span class="lib-count" id="histCount"></span>
+        <button class="pcard-btn pcard-btn--danger" id="btnClearHistory">Limpar tudo</button>
+      </div>
+      <p id="histEmpty" class="summary-empty">Nenhuma transcrição salva ainda. Elas aparecerão aqui automaticamente após cada transcrição.</p>
+      <div id="histList" class="hist-list"></div>
+    </div>
+  </div>
+
   <footer class="footer">
     <p>Powered by <strong>AssemblyAI</strong> · Resumos via <strong>Google Gemini</strong></p>
   </footer>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=2"></script>
 </body>
 </html>

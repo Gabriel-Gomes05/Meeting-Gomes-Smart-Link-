@@ -1082,6 +1082,88 @@ body {
   margin-bottom: 18px;
 }
 
+/* ============================================================
+   Histórico de Transcrições
+   ============================================================ */
+.pcard-btn--danger {
+  color: var(--red);
+  border-color: rgba(244,63,94,.3);
+}
+.pcard-btn--danger:hover {
+  border-color: var(--red);
+  background: rgba(244,63,94,.08);
+}
+
+.hist-list {
+  display: grid;
+  gap: 14px;
+}
+
+.hist-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  transition: border-color .15s;
+}
+
+.hist-card:hover { border-color: rgba(108,99,255,.3); }
+
+.hist-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.hist-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hist-date {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.hist-badges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.hist-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+
+.hist-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.hist-preview {
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.6;
+  margin-bottom: 6px;
+}
+
+.hist-summary-preview {
+  font-size: 12px;
+  color: var(--accent2);
+  line-height: 1.5;
+}
+
 @media (max-width: 560px) {
   .header-inner,
   .lib-toolbar,
@@ -1106,4 +1188,7 @@ body {
   .prompt-select-sm {
     min-width: 0;
   }
+
+  .hist-card-header { flex-direction: column; }
+  .hist-card-actions { flex-direction: row; }
 }

@@ -81,8 +81,10 @@ const btnRegenerateSum   = document.getElementById('btnRegenerateSum');
 const btnGoToLibrary     = document.getElementById('btnGoToLibrary');
 const navTranscricao     = document.getElementById('navTranscricao');
 const navBiblioteca      = document.getElementById('navBiblioteca');
+const navHistorico       = document.getElementById('navHistorico');
 const viewTranscricao    = document.getElementById('viewTranscricao');
 const viewBiblioteca     = document.getElementById('viewBiblioteca');
+const viewHistorico      = document.getElementById('viewHistorico');
 const btnNewPrompt       = document.getElementById('btnNewPrompt');
 const promptList         = document.getElementById('promptList');
 const promptFormCard     = document.getElementById('promptFormCard');
@@ -95,6 +97,7 @@ checkApiHealth();
 setupSourceListeners();
 setupNavListeners();
 setupLibraryListeners();
+setupHistoryListeners();
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 
@@ -104,15 +107,19 @@ window.addEventListener('resize', resizeCanvas);
 function setupNavListeners() {
   navTranscricao.addEventListener('click', () => showView('transcricao'));
   navBiblioteca.addEventListener('click',  () => showView('biblioteca'));
+  navHistorico?.addEventListener('click',  () => showView('historico'));
   btnGoToLibrary.addEventListener('click', () => showView('biblioteca'));
 }
 
 function showView(view) {
   viewTranscricao.hidden = view !== 'transcricao';
   viewBiblioteca.hidden  = view !== 'biblioteca';
+  if (viewHistorico) viewHistorico.hidden = view !== 'historico';
   navTranscricao.classList.toggle('active', view === 'transcricao');
-  navBiblioteca.classList.toggle('active', view === 'biblioteca');
+  navBiblioteca.classList.toggle('active',  view === 'biblioteca');
+  navHistorico?.classList.toggle('active',  view === 'historico');
   if (view === 'biblioteca') renderPromptList();
+  if (view === 'historico')  renderHistorico();
 }
 
 // ============================================================
@@ -348,6 +355,125 @@ function renderPromptList() {
 }
 
 // ============================================================
+//  Histórico de Transcrições — dados
+// ============================================================
+const TRANSCRIPTIONS_KEY = 'ms_transcriptions';
+const MAX_TRANSCRIPTIONS = 20;
+
+function loadTranscriptions() {
+  try { return JSON.parse(localStorage.getItem(TRANSCRIPTIONS_KEY) || '[]'); } catch { return []; }
+}
+
+function saveTranscriptionToStorage(data) {
+  const entry = {
+    id:             'tr-' + Date.now(),
+    savedAt:        new Date().toISOString(),
+    full_text:      data.full_text      || '',
+    utterances:     data.utterances     || [],
+    summary:        data.summary        || '',
+    language_code:  data.language_code  || '',
+    speakers_found: data.speakers_found || 0,
+    transcript_id:  data.transcript_id  || '',
+  };
+  let list = loadTranscriptions();
+  list.unshift(entry);
+  if (list.length > MAX_TRANSCRIPTIONS) list.length = MAX_TRANSCRIPTIONS;
+  while (list.length > 0) {
+    try { localStorage.setItem(TRANSCRIPTIONS_KEY, JSON.stringify(list)); break; }
+    catch (e) { if (e.name === 'QuotaExceededError' && list.length > 1) list.pop(); else break; }
+  }
+}
+
+function deleteTranscriptionFromStorage(id) {
+  const list = loadTranscriptions().filter(t => t.id !== id);
+  localStorage.setItem(TRANSCRIPTIONS_KEY, JSON.stringify(list));
+}
+
+function clearAllTranscriptions() {
+  localStorage.removeItem(TRANSCRIPTIONS_KEY);
+}
+
+// ============================================================
+//  Histórico de Transcrições — UI
+// ============================================================
+function setupHistoryListeners() {
+  document.getElementById('histList')?.addEventListener('click', e => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const { action, id } = btn.dataset;
+    if (action === 'load') loadHistoryEntry(id);
+    if (action === 'delete') {
+      if (!confirm('Excluir esta transcrição do histórico?')) return;
+      deleteTranscriptionFromStorage(id);
+      renderHistorico();
+    }
+  });
+
+  document.getElementById('btnClearHistory')?.addEventListener('click', () => {
+    if (!confirm('Limpar todo o histórico de transcrições?')) return;
+    clearAllTranscriptions();
+    renderHistorico();
+  });
+}
+
+function renderHistorico() {
+  const list      = loadTranscriptions();
+  const histEmpty = document.getElementById('histEmpty');
+  const histList  = document.getElementById('histList');
+  const histCount = document.getElementById('histCount');
+
+  if (histCount) histCount.textContent = `${list.length} transcrição${list.length !== 1 ? 'ões' : ''}`;
+
+  if (list.length === 0) {
+    if (histEmpty) histEmpty.hidden = false;
+    if (histList)  histList.innerHTML = '';
+    return;
+  }
+
+  if (histEmpty) histEmpty.hidden = true;
+  if (!histList) return;
+
+  histList.innerHTML = list.map(t => {
+    const d          = new Date(t.savedAt);
+    const dateStr    = d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const lastMs     = t.utterances?.length ? t.utterances[t.utterances.length - 1]?.end_ms : null;
+    const duration   = lastMs != null ? formatMs(lastMs) : null;
+    const preview    = t.full_text ? (t.full_text.length > 150 ? t.full_text.slice(0, 150) + '…' : t.full_text) : '';
+    const firstBullet = t.summary
+      ? (t.summary.split('\n').filter(l => l.trim())[0] || '').replace(/^[-•]\s*/, '')
+      : '';
+
+    return `
+      <div class="hist-card" data-id="${escAttr(t.id)}">
+        <div class="hist-card-header">
+          <div class="hist-card-meta">
+            <span class="hist-date">${escHtml(dateStr)}</span>
+            <span class="hist-badges">
+              ${t.speakers_found > 0 ? `<span class="hist-badge">${t.speakers_found} falante${t.speakers_found !== 1 ? 's' : ''}</span>` : ''}
+              ${t.language_code  ? `<span class="hist-badge">${escHtml(t.language_code.toUpperCase())}</span>` : ''}
+              ${duration         ? `<span class="hist-badge">${escHtml(duration)}</span>` : ''}
+            </span>
+          </div>
+          <div class="hist-card-actions">
+            <button class="pcard-btn" data-action="load" data-id="${escAttr(t.id)}">Carregar</button>
+            <button class="pcard-btn pcard-btn--danger" data-action="delete" data-id="${escAttr(t.id)}">Excluir</button>
+          </div>
+        </div>
+        ${preview     ? `<p class="hist-preview">${escHtml(preview)}</p>` : ''}
+        ${firstBullet ? `<p class="hist-summary-preview">• ${escHtml(firstBullet)}</p>` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+function loadHistoryEntry(id) {
+  const entry = loadTranscriptions().find(t => t.id === id);
+  if (!entry) return;
+  renderResult(entry, { skipSave: true });
+  showView('transcricao');
+}
+
+// ============================================================
 //  Captura de áudio
 // ============================================================
 async function buildAudioStream(source) {
@@ -535,7 +661,7 @@ function renderSummary(text) {
 // ============================================================
 //  Renderizar resultado
 // ============================================================
-function renderResult(data) {
+function renderResult(data, { skipSave = false } = {}) {
   processingCard.hidden   = true;
   resultCard.hidden       = false;
   utteranceList.innerHTML = '';
@@ -551,6 +677,8 @@ function renderResult(data) {
 
   lastTranscriptId = transcript_id || '';
   lastFullText     = full_text     || '';
+
+  if (!skipSave) saveTranscriptionToStorage(data);
 
   populatePromptSelects();
 
