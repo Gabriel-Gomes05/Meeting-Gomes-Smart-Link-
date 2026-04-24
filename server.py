@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+from time import perf_counter
 from datetime import datetime
 from pathlib import Path
 
@@ -94,32 +95,45 @@ async def generate_summary(client: httpx.AsyncClient, text: str, prompt: str) ->
         raise RuntimeError(f"Resposta inesperada do Groq: {detail}")
 
 
+def _elapsed_seconds(started_at: float) -> float:
+    return round(perf_counter() - started_at, 2)
+
+
 @app.post("/transcribe")
 async def transcribe(
     audio: UploadFile = File(...),
     speakers: int = 0,
     prompt: str = "",
+    include_summary: bool = False,
 ):
     if not API_KEY:
         raise HTTPException(400, "ASSEMBLYAI_API_KEY nao configurada no arquivo .env")
 
+    request_started_at = perf_counter()
     auth = {"authorization": API_KEY}
     content = await audio.read()
     log.info(
-        "Audio recebido: %s bytes | tipo: %s | falantes esperados: %s",
+        "Audio recebido: %s bytes | tipo: %s | falantes esperados: %s | leitura=%.2fs",
         len(content),
         audio.content_type,
         speakers or "auto",
+        _elapsed_seconds(request_started_at),
     )
 
     async with httpx.AsyncClient(timeout=300) as client:
+        upload_started_at = perf_counter()
         upload = await client.post(f"{BASE_URL}/upload", headers=auth, content=content)
         if upload.status_code != 200:
             log.error("Upload falhou: %s", upload.text)
             raise HTTPException(500, f"Falha no upload: {upload.text}")
 
         audio_url = upload.json()["upload_url"]
-        log.info("Upload OK -> %s", audio_url)
+        log.info(
+            "Upload OK -> %s | upload=%.2fs | total=%.2fs",
+            audio_url,
+            _elapsed_seconds(upload_started_at),
+            _elapsed_seconds(request_started_at),
+        )
 
         payload: dict = {
             "audio_url": audio_url,
@@ -130,6 +144,7 @@ async def transcribe(
         if speakers > 0:
             payload["speakers_expected"] = speakers
 
+        create_started_at = perf_counter()
         create = await client.post(
             f"{BASE_URL}/transcript",
             headers={**auth, "content-type": "application/json"},
@@ -140,14 +155,26 @@ async def transcribe(
             raise HTTPException(500, f"Falha ao criar transcricao: {create.text}")
 
         transcript_id = create.json()["id"]
-        log.info("Transcricao criada: %s", transcript_id)
+        log.info(
+            "Transcricao criada: %s | create=%.2fs | total=%.2fs",
+            transcript_id,
+            _elapsed_seconds(create_started_at),
+            _elapsed_seconds(request_started_at),
+        )
 
         poll_url = f"{BASE_URL}/transcript/{transcript_id}"
+        poll_started_at = perf_counter()
         for attempt in range(120):
             await asyncio.sleep(3)
             poll = await client.get(poll_url, headers=auth)
             data = poll.json()
-            log.info("Poll #%d -> status: %s", attempt + 1, data["status"])
+            log.info(
+                "Poll #%d -> status: %s | polling=%.2fs | total=%.2fs",
+                attempt + 1,
+                data["status"],
+                _elapsed_seconds(poll_started_at),
+                _elapsed_seconds(request_started_at),
+            )
 
             if data["status"] == "completed":
                 utterances = []
@@ -164,18 +191,28 @@ async def transcribe(
                 speakers_found = len({item["speaker"] for item in utterances})
                 full_text = data.get("text", "")
                 log.info(
-                    "Concluido: %d utterances | %d falante(s) | idioma: %s",
+                    "Concluido: %d utterances | %d falante(s) | idioma: %s | polling=%.2fs | total=%.2fs",
                     len(utterances),
                     speakers_found,
                     data.get("language_code"),
+                    _elapsed_seconds(poll_started_at),
+                    _elapsed_seconds(request_started_at),
                 )
 
-                summary_prompt = prompt.strip() or DEFAULT_SUMMARY_PROMPT
                 summary = ""
-                try:
-                    summary = await generate_summary(client, full_text, summary_prompt)
-                except Exception as exc:
-                    log.warning("Erro ao gerar resumo com Groq: %s", exc)
+                if include_summary:
+                    summary_prompt = prompt.strip() or DEFAULT_SUMMARY_PROMPT
+                    summary_started_at = perf_counter()
+                    try:
+                        summary = await generate_summary(client, full_text, summary_prompt)
+                        log.info(
+                            "Resumo inline concluido | chars=%d | resumo=%.2fs | total=%.2fs",
+                            len(summary),
+                            _elapsed_seconds(summary_started_at),
+                            _elapsed_seconds(request_started_at),
+                        )
+                    except Exception as exc:
+                        log.warning("Erro ao gerar resumo com Groq: %s", exc)
 
                 return {
                     "full_text": full_text,
@@ -184,6 +221,7 @@ async def transcribe(
                     "speakers_found": speakers_found,
                     "summary": summary,
                     "transcript_id": transcript_id,
+                    "summary_pending": bool(GROQ_KEY and full_text and not include_summary),
                 }
 
             if data["status"] == "error":
@@ -195,6 +233,7 @@ async def transcribe(
 
 @app.post("/summarize")
 async def summarize(request: Request):
+    request_started_at = perf_counter()
     body = await request.json()
     text = body.get("text", "")
     prompt = (body.get("prompt") or "").strip() or DEFAULT_SUMMARY_PROMPT
@@ -217,6 +256,11 @@ async def summarize(request: Request):
     if not summary:
         raise HTTPException(503, "O Groq nao retornou conteudo para este resumo.")
 
+    log.info(
+        "Resumo concluido | chars=%d | total=%.2fs",
+        len(summary),
+        _elapsed_seconds(request_started_at),
+    )
     return {"summary": summary}
 
 

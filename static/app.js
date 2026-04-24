@@ -49,6 +49,7 @@ let lastFullText     = '';
 let geminiConfigured = false;
 let prompts          = [];
 let editingPromptId  = null;
+let autoSummaryRequestId = 0;
 
 // ── Elementos ────────────────────────────────────────────────
 const btnRecord          = document.getElementById('btnRecord');
@@ -120,6 +121,47 @@ function showView(view) {
   navHistorico?.classList.toggle('active',  view === 'historico');
   if (view === 'biblioteca') renderPromptList();
   if (view === 'historico')  renderHistorico();
+}
+
+async function requestSummary({ text, prompt, transcriptId, auto = false }) {
+  if (!text) return;
+
+  const requestId = ++autoSummaryRequestId;
+  summaryList.innerHTML     = '';
+  summaryBlock.hidden       = false;
+  summaryEmpty.hidden       = true;
+  summaryLoading.hidden     = false;
+  btnRegenerateSum.disabled = true;
+
+  try {
+    const res = await fetch('/summarize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text,
+        prompt,
+        transcript_id: transcriptId,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Erro ${res.status}`);
+    }
+
+    const data = await res.json();
+    if (requestId !== autoSummaryRequestId) return;
+    summaryLoading.hidden = true;
+    renderSummary(data.summary || '');
+    updateStoredTranscriptionSummary(transcriptId, data.summary || '');
+  } catch (err) {
+    if (requestId !== autoSummaryRequestId) return;
+    summaryLoading.hidden = true;
+    summaryEmpty.hidden   = false;
+    if (!auto) showError(err.message || 'Nao foi possivel regenerar o resumo.');
+  } finally {
+    if (requestId === autoSummaryRequestId) btnRegenerateSum.disabled = false;
+  }
 }
 
 // ============================================================
@@ -384,6 +426,15 @@ function saveTranscriptionToStorage(data) {
   }
 }
 
+function updateStoredTranscriptionSummary(transcriptId, summary) {
+  if (!transcriptId || !summary) return;
+  const list = loadTranscriptions();
+  const entry = list.find(t => t.transcript_id === transcriptId);
+  if (!entry) return;
+  entry.summary = summary;
+  localStorage.setItem(TRANSCRIPTIONS_KEY, JSON.stringify(list));
+}
+
 function deleteTranscriptionFromStorage(id) {
   const list = loadTranscriptions().filter(t => t.id !== id);
   localStorage.setItem(TRANSCRIPTIONS_KEY, JSON.stringify(list));
@@ -589,6 +640,14 @@ async function sendAudio(mimeType) {
 
     const data = await res.json();
     renderResult(data);
+    if (!data.summary && data.summary_pending && geminiConfigured) {
+      requestSummary({
+        text: data.full_text,
+        prompt: selectedPrompt?.text || '',
+        transcriptId: data.transcript_id,
+        auto: true,
+      });
+    }
   } catch (err) {
     console.error('[sendAudio]', err);
     const msg = err.message && err.message !== 'Failed to fetch'
@@ -607,6 +666,11 @@ btnRegenerateSum?.addEventListener('click', async () => {
   if (!lastFullText && !lastTranscriptId) return;
 
   const prompt = getSelectedPrompt();
+  return requestSummary({
+    text: lastFullText,
+    prompt: prompt?.text || '',
+    transcriptId: lastTranscriptId,
+  });
 
   summaryList.innerHTML     = '';
   summaryBlock.hidden       = false;
@@ -662,6 +726,7 @@ function renderSummary(text) {
 //  Renderizar resultado
 // ============================================================
 function renderResult(data, { skipSave = false } = {}) {
+  autoSummaryRequestId++;
   processingCard.hidden   = true;
   resultCard.hidden       = false;
   utteranceList.innerHTML = '';
