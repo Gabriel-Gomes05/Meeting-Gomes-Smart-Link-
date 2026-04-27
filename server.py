@@ -138,7 +138,7 @@ async def transcribe(
         payload: dict = {
             "audio_url": audio_url,
             "speaker_labels": True,
-            "speech_models": ["nano"],
+            "speech_models": ["best"],
             "language_detection": True,
         }
         if speakers > 0:
