@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import re
 from time import perf_counter
 from datetime import datetime
 from pathlib import Path
@@ -54,45 +55,49 @@ def _extract_summary_error(resp: httpx.Response) -> str:
     return " ".join(str(message).split())[:300]
 
 
+_GROQ_RETRY_RE = re.compile(r"try again in (\d+\.?\d*)s", re.IGNORECASE)
+MAX_SUMMARY_CHARS = 12_000  # ~3000 tokens, fica abaixo do limite de 6000 TPM
+
+
 async def generate_summary(client: httpx.AsyncClient, text: str, prompt: str) -> str:
     if not GROQ_KEY or not text.strip():
         return ""
 
-    full_prompt = f"{prompt}\n\nTranscricao:\n{text}"
-    resp = await client.post(
-        GROQ_URL,
-        headers={
-            "Authorization": f"Bearer {GROQ_KEY}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": "llama-3.1-8b-instant",
-            "messages": [
-                {
-                    "role": "system",
-                    "content": "Voce gera resumos curtos, claros e uteis.",
-                },
-                {
-                    "role": "user",
-                    "content": full_prompt,
-                },
-            ],
-            "temperature": 0.2,
-        },
-        timeout=60,
-    )
+    truncated = text[:MAX_SUMMARY_CHARS] + ("..." if len(text) > MAX_SUMMARY_CHARS else "")
+    full_prompt = f"{prompt}\n\nTranscricao:\n{truncated}"
+    body = {
+        "model": "llama-3.1-8b-instant",
+        "messages": [
+            {"role": "system", "content": "Voce gera resumos curtos, claros e uteis."},
+            {"role": "user", "content": full_prompt},
+        ],
+        "temperature": 0.2,
+    }
+    headers = {"Authorization": f"Bearer {GROQ_KEY}", "Content-Type": "application/json"}
 
-    if resp.status_code != 200:
-        detail = _extract_summary_error(resp)
-        log.warning("Groq falhou (%s): %s", resp.status_code, detail)
-        raise RuntimeError(detail)
+    for attempt in range(2):
+        resp = await client.post(GROQ_URL, headers=headers, json=body, timeout=60)
 
-    try:
-        return resp.json()["choices"][0]["message"]["content"]
-    except (KeyError, IndexError, TypeError):
-        detail = _extract_summary_error(resp)
-        log.warning("Groq respondeu em formato inesperado: %s", detail)
-        raise RuntimeError(f"Resposta inesperada do Groq: {detail}")
+        if resp.status_code == 429 and attempt == 0:
+            match = _GROQ_RETRY_RE.search(resp.text)
+            wait = float(match.group(1)) + 0.5 if match else 5.0
+            log.warning("Groq rate limit; aguardando %.1fs antes de retry", wait)
+            await asyncio.sleep(wait)
+            continue
+
+        if resp.status_code != 200:
+            detail = _extract_summary_error(resp)
+            log.warning("Groq falhou (%s): %s", resp.status_code, detail)
+            raise RuntimeError(detail)
+
+        try:
+            return resp.json()["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, TypeError):
+            detail = _extract_summary_error(resp)
+            log.warning("Groq respondeu em formato inesperado: %s", detail)
+            raise RuntimeError(f"Resposta inesperada do Groq: {detail}")
+
+    return ""
 
 
 def _elapsed_seconds(started_at: float) -> float:
