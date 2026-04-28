@@ -1192,3 +1192,286 @@ body {
   .hist-card-header { flex-direction: column; }
   .hist-card-actions { flex-direction: row; }
 }
+
+/* ============================================================
+   Melhorias Mobile — Toque e Texto
+   ============================================================ */
+
+/* Prevenir zoom iOS ao focar em inputs (font-size < 16px causa zoom) */
+@media (max-width: 560px) {
+  .form-input,
+  .form-textarea,
+  .prompt-select,
+  .prompt-select-sm {
+    font-size: 16px;
+  }
+}
+
+/* Remover delay de toque e highlight em todos elementos interativos */
+button,
+.source-card,
+.speaker-pill,
+.lang-card,
+.nav-tab,
+label[class] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Quebrar palavras longas para evitar overflow horizontal */
+.utterance-text,
+.summary-list li,
+.hist-preview,
+.prompt-card-preview,
+.hero-sub,
+.card-desc {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* ============================================================
+   Tablet (≤ 768px)
+   ============================================================ */
+@media (max-width: 768px) {
+  .main, .lib-main {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .hero, .lib-hero {
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-top: 40px;
+  }
+
+  .card {
+    padding: 22px 20px;
+  }
+}
+
+/* ============================================================
+   Mobile (≤ 560px) — Layout aprimorado
+   ============================================================ */
+@media (max-width: 560px) {
+  /* Header: logo + badge na linha 1, nav scrollável na linha 2 */
+  .header-inner {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 10px 16px;
+    gap: 8px;
+  }
+
+  .logo {
+    flex: 1;
+    order: 1;
+    min-width: 0;
+  }
+
+  .logo-text {
+    font-size: 15px;
+  }
+
+  .header-right {
+    order: 2;
+    flex-shrink: 0;
+  }
+
+  .api-badge {
+    font-size: 11px;
+    padding: 4px 10px;
+    gap: 5px;
+  }
+
+  /* Nav horizontal com scroll suave — sem empilhamento vertical */
+  .header-nav {
+    order: 3;
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+    gap: 6px;
+  }
+
+  .header-nav::-webkit-scrollbar { display: none; }
+
+  .nav-tab {
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-size: 11px;
+    padding: 6px 12px;
+    min-height: 36px;
+  }
+
+  /* Hero */
+  .hero, .lib-hero {
+    padding: 20px 16px 16px;
+  }
+
+  .hero-title {
+    font-size: clamp(22px, 7vw, 34px);
+    letter-spacing: -0.5px;
+  }
+
+  .hero-sub {
+    font-size: 14px;
+  }
+
+  /* Layout principal com menos padding lateral */
+  .main, .lib-main {
+    padding: 0 14px 80px;
+    gap: 16px;
+  }
+
+  /* Cards */
+  .card {
+    padding: 18px 16px;
+  }
+
+  .result-card {
+    padding: 18px 16px;
+  }
+
+  /* Waveform menor para economizar tela */
+  .waveform-container {
+    height: 72px;
+  }
+
+  /* Record controls: botão gravar em cima, stop + timer embaixo */
+  .record-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .btn-record {
+    width: 100%;
+    justify-content: center;
+    min-height: 50px;
+    font-size: 15px;
+  }
+
+  /* Timer e stop na mesma linha */
+  .record-right {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .btn-stop {
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  /* Result header: título em cima, botões embaixo */
+  .result-header {
+    flex-direction: column;
+  }
+
+  .result-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .btn-action {
+    justify-content: center;
+    min-height: 40px;
+  }
+
+  /* Summary: select + regenerar em linha */
+  .summary-regen-row {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .summary-regen-row .prompt-select-sm {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Lib toolbar: count + botão na mesma linha */
+  .lib-toolbar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* Prompt form header: título + X na mesma linha */
+  .prompt-form-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* Targets de toque mínimo de 44px (WCAG) */
+  .btn-manage-prompts,
+  .btn-regen,
+  .btn-new-prompt,
+  .btn-save-prompt,
+  .btn-cancel-prompt,
+  .pcard-btn {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Prompt e hist card actions — quebrar se necessário */
+  .prompt-card-actions,
+  .hist-card-actions {
+    flex-wrap: wrap;
+  }
+}
+
+/* ============================================================
+   Telas muito pequenas (≤ 400px)
+   ============================================================ */
+@media (max-width: 400px) {
+  .main, .lib-main {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .card {
+    padding: 16px 14px;
+  }
+
+  .hero-title {
+    font-size: clamp(20px, 7vw, 30px);
+  }
+
+  .result-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .logo-mark {
+    width: 30px;
+    height: 30px;
+  }
+}
+
+/* ============================================================
+   Safe area — iPhone com notch / Dynamic Island / Android
+   ============================================================ */
+@supports (padding: env(safe-area-inset-top)) {
+  .header {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .footer {
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
+  }
+
+  @media (max-width: 560px) {
+    .main, .lib-main {
+      padding-bottom: calc(80px + env(safe-area-inset-bottom));
+    }
+  }
+}
