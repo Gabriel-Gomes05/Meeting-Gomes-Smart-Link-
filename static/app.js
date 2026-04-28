@@ -50,6 +50,7 @@ let geminiConfigured = false;
 let prompts          = [];
 let editingPromptId  = null;
 let autoSummaryRequestId = 0;
+let mobileCompatibility = { isMobile: false, captureMode: 'desktop' };
 
 // ── Elementos ────────────────────────────────────────────────
 const btnRecord          = document.getElementById('btnRecord');
@@ -99,6 +100,7 @@ setupSourceListeners();
 setupNavListeners();
 setupLibraryListeners();
 setupHistoryListeners();
+setupMobileCompatibility();
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 
@@ -201,6 +203,54 @@ function setupSourceListeners() {
 
 function getSource()   { return document.querySelector('input[name="source"]:checked').value; }
 function getSpeakers() { return document.querySelector('input[name="speakers"]:checked')?.value || '0'; }
+
+function setupMobileCompatibility() {
+  mobileCompatibility = detectMobileCompatibility();
+  if (!mobileCompatibility.isMobile) return;
+  applyMobileSourceRestrictions(mobileCompatibility.captureMode === 'mic-only');
+  applyTouchSpeakerTweaks();
+}
+
+function detectMobileCompatibility() {
+  const ua = navigator.userAgent || '';
+  const isMobile =
+    window.matchMedia('(max-width: 768px)').matches &&
+    /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+  const hasDisplayMedia = !!navigator.mediaDevices?.getDisplayMedia;
+  const hasMediaRecorder = typeof window.MediaRecorder !== 'undefined';
+
+  let captureMode = 'desktop';
+  if (isMobile) {
+    captureMode = hasDisplayMedia && hasMediaRecorder ? 'limited-mobile' : 'mic-only';
+  }
+
+  return { isMobile, captureMode, hasDisplayMedia, hasMediaRecorder };
+}
+
+function applyMobileSourceRestrictions(forceMicOnly) {
+  const current = getSource();
+  const systemInput = document.querySelector('input[name="source"][value="system"]');
+  const bothInput = document.querySelector('input[name="source"][value="both"]');
+
+  [systemInput, bothInput].forEach(input => {
+    if (!input) return;
+    const card = input.closest('.source-card');
+    const note = card?.querySelector('.source-card-note');
+    input.disabled = forceMicOnly;
+    card?.classList.toggle('is-disabled', forceMicOnly);
+    if (note) note.hidden = !forceMicOnly;
+  });
+
+  if (forceMicOnly && current !== 'mic') {
+    const micInput = document.querySelector('input[name="source"][value="mic"]');
+    if (micInput) micInput.checked = true;
+    tabBanner.hidden = true;
+  }
+}
+
+function applyTouchSpeakerTweaks() {
+  speakerLegend?.classList.add('is-touch-ready');
+}
 
 // ============================================================
 //  Biblioteca de Prompts — dados
@@ -528,6 +578,10 @@ function loadHistoryEntry(id) {
 //  Captura de áudio
 // ============================================================
 async function buildAudioStream(source) {
+  if (mobileCompatibility.isMobile && mobileCompatibility.captureMode === 'mic-only' && source !== 'mic') {
+    throw new Error('No celular, esta opção de captura não é suportada neste navegador. Use Microfone.');
+  }
+
   const ctx         = new AudioContext();
   const destination = ctx.createMediaStreamDestination();
 
@@ -569,6 +623,17 @@ async function buildAudioStream(source) {
 // ============================================================
 btnRecord.addEventListener('click', async () => {
   try {
+    if (mobileCompatibility.isMobile) {
+      const source = getSource();
+      if (mobileCompatibility.captureMode === 'mic-only' && source !== 'mic') {
+        showError('No celular, este navegador suporta apenas gravação por microfone. As opções de aba e sistema continuam disponíveis no PC.');
+        return;
+      }
+      if (source !== 'mic') {
+        showError('No celular, captura de aba/sistema é limitada e pode falhar dependendo do navegador. No PC nada muda; aqui, prefira Microfone para maior compatibilidade.');
+      }
+    }
+
     const stream   = await buildAudioStream(getSource());
     const mimeType = getSupportedMimeType();
     audioChunks    = [];
@@ -780,6 +845,7 @@ function renderResult(data, { skipSave = false } = {}) {
           </svg>
         </button>
       `;
+      if (mobileCompatibility.isMobile) pill.classList.add('is-touch');
       pill.querySelector('.rename-btn').addEventListener('click', () => startRename(speaker, color));
       speakerLegend.appendChild(pill);
     });
@@ -1056,6 +1122,10 @@ function getSupportedMimeType() {
 function friendlyError(err) {
   const name = err.name || '';
   const msg  = (err.message || '').toLowerCase();
+
+  if (msg.includes('no celular, esta opção de captura não é suportada')) {
+    return 'No celular, este navegador só consegue gravar pelo microfone. No PC as opções de aba e sistema continuam funcionando normalmente.';
+  }
 
   if (name === 'NotAllowedError' || msg.includes('permission denied') || msg.includes('denied by user')) {
     if (getSource() === 'mic')

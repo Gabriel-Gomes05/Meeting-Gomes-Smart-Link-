@@ -53,7 +53,7 @@
           <p class="card-desc">Selecione o que deseja capturar durante a reuniao.</p>
 
           <div class="source-grid">
-            <label class="source-card">
+            <label class="source-card" data-source-card="mic">
               <input type="radio" name="source" value="mic" checked />
               <div class="source-card-inner">
                 <div class="source-card-icon">
@@ -76,7 +76,7 @@
               </div>
             </label>
 
-            <label class="source-card">
+            <label class="source-card" data-source-card="system">
               <input type="radio" name="source" value="system" />
               <div class="source-card-inner">
                 <div class="source-card-icon">
@@ -89,6 +89,7 @@
                 <div class="source-card-info">
                   <span class="source-card-label">Aba / Sistema</span>
                   <span class="source-card-desc">Captura o som de uma aba ou app</span>
+                  <span class="source-card-note" hidden>Indisponível na maioria dos navegadores mobile.</span>
                 </div>
                 <div class="source-card-check">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -98,7 +99,7 @@
               </div>
             </label>
 
-            <label class="source-card">
+            <label class="source-card" data-source-card="both">
               <input type="radio" name="source" value="both" />
               <div class="source-card-inner">
                 <div class="source-card-icon">
@@ -110,6 +111,7 @@
                 <div class="source-card-info">
                   <span class="source-card-label">Ambos</span>
                   <span class="source-card-desc">Microfone + aba ao mesmo tempo</span>
+                  <span class="source-card-note" hidden>Indisponível na maioria dos navegadores mobile.</span>
                 </div>
                 <div class="source-card-check">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">

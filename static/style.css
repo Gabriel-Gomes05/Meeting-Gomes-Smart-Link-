@@ -286,6 +286,13 @@ body {
   color: var(--text-dim);
 }
 
+.source-card-note {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--yellow);
+}
+
 .source-card-check {
   width: 24px;
   height: 24px;
@@ -303,6 +310,20 @@ body {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
+}
+
+.source-card.is-disabled {
+  cursor: not-allowed;
+}
+
+.source-card.is-disabled .source-card-inner {
+  opacity: .55;
+  border-style: dashed;
+}
+
+.source-card.is-disabled .source-card-icon,
+.source-card.is-disabled .source-card-check {
+  opacity: .7;
 }
 
 /* Info banner */
@@ -763,6 +784,11 @@ body {
 
 .legend-pill:hover .rename-btn { opacity: .7; }
 .rename-btn:hover { opacity: 1 !important; }
+
+.legend-pill.is-touch .rename-btn,
+.rename-btn:focus-visible {
+  opacity: .9;
+}
 
 .rename-input {
   background: none;
@@ -1380,7 +1406,7 @@ label[class] {
 
   .btn-action {
     justify-content: center;
-    min-height: 40px;
+    min-height: 44px;
   }
 
   /* Summary: select + regenerar em linha */
@@ -1427,6 +1453,18 @@ label[class] {
   .prompt-card-actions,
   .hist-card-actions {
     flex-wrap: wrap;
+  }
+
+  .legend-pill {
+    min-height: 44px;
+    padding-right: 10px;
+  }
+
+  .rename-btn {
+    opacity: .9;
+    min-width: 32px;
+    min-height: 32px;
+    margin-left: 2px;
   }
 }
 
