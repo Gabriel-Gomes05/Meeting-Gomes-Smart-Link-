@@ -1513,3 +1513,7 @@ label[class] {
     }
   }
 }
+
+.mobile-device #sourceStep {
+  display: none;
+}

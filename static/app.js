@@ -207,6 +207,8 @@ function getSpeakers() { return document.querySelector('input[name="speakers"]:c
 function setupMobileCompatibility() {
   mobileCompatibility = detectMobileCompatibility();
   if (!mobileCompatibility.isMobile) return;
+  document.body.classList.add('mobile-device');
+  forceMobileMicOnly();
   applyMobileSourceRestrictions(mobileCompatibility.captureMode === 'mic-only');
   applyTouchSpeakerTweaks();
 }
@@ -242,10 +244,15 @@ function applyMobileSourceRestrictions(forceMicOnly) {
   });
 
   if (forceMicOnly && current !== 'mic') {
-    const micInput = document.querySelector('input[name="source"][value="mic"]');
-    if (micInput) micInput.checked = true;
+    forceMobileMicOnly();
     tabBanner.hidden = true;
   }
+}
+
+function forceMobileMicOnly() {
+  const micInput = document.querySelector('input[name="source"][value="mic"]');
+  if (micInput) micInput.checked = true;
+  tabBanner.hidden = true;
 }
 
 function applyTouchSpeakerTweaks() {
