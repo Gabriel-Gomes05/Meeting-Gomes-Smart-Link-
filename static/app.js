@@ -589,6 +589,19 @@ async function buildAudioStream(source) {
     throw new Error('No celular, esta opção de captura não é suportada neste navegador. Use Microfone.');
   }
 
+  if (mobileCompatibility.isMobile && source === 'mic') {
+    const ctx = new AudioContext();
+    analyserNode = ctx.createAnalyser();
+    analyserNode.fftSize = 256;
+    audioCtxGlobal = ctx;
+    activeStreams = [];
+
+    const mic = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    activeStreams.push(mic);
+    ctx.createMediaStreamSource(mic).connect(analyserNode);
+    return mic;
+  }
+
   const ctx         = new AudioContext();
   const destination = ctx.createMediaStreamDestination();
 
@@ -642,12 +655,12 @@ btnRecord.addEventListener('click', async () => {
     }
 
     const stream   = await buildAudioStream(getSource());
-    const mimeType = getSupportedMimeType();
+    const recorderSetup = createMediaRecorder(stream);
     audioChunks    = [];
-    mediaRecorder  = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+    mediaRecorder  = recorderSetup.recorder;
 
     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
-    mediaRecorder.onstop          = () => sendAudio(mimeType || 'audio/webm');
+    mediaRecorder.onstop          = () => sendAudio(recorderSetup.mimeType || mediaRecorder.mimeType || '');
     mediaRecorder.start(500);
 
     btnRecord.disabled         = true;
@@ -692,14 +705,19 @@ function stopRecording() {
 //  Enviar e transcrever
 // ============================================================
 async function sendAudio(mimeType) {
-  const ext  = mimeType.includes('ogg') ? '.ogg' : mimeType.includes('mp4') ? '.mp4' : '.webm';
-  const blob = new Blob(audioChunks, { type: mimeType });
-  const form = new FormData();
-  form.append('audio', blob, `gravacao${ext}`);
-
-  const selectedPrompt = getSelectedPrompt();
-
   try {
+    const blobType = audioChunks[0]?.type || mimeType || 'audio/webm';
+    const blob = new Blob(audioChunks, { type: blobType });
+    const totalSize = audioChunks.reduce((sum, chunk) => sum + (chunk.size || 0), 0);
+    if (!totalSize) {
+      throw new Error('O navegador não conseguiu gerar um áudio válido no celular. Tente novamente ou use outro navegador.');
+    }
+
+    const ext  = blob.type.includes('ogg') ? '.ogg' : blob.type.includes('mp4') ? '.mp4' : blob.type.includes('mpeg') ? '.mp3' : '.webm';
+    const form = new FormData();
+    form.append('audio', blob, `gravacao${ext}`);
+    const selectedPrompt = getSelectedPrompt();
+
     setProcessing('Transcrevendo com IA...');
     const url = `/transcribe?speakers=${getSpeakers()}&prompt=${encodeURIComponent(selectedPrompt?.text || '')}`;
     const res = await fetch(url, { method: 'POST', body: form });
@@ -1119,8 +1137,35 @@ function downloadText(text, filename) {
 }
 
 function getSupportedMimeType() {
-  const types = ['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/mp4'];
-  return types.find(t => MediaRecorder.isTypeSupported(t)) || '';
+  if (typeof MediaRecorder === 'undefined') return '';
+  const supportsType = typeof MediaRecorder.isTypeSupported === 'function'
+    ? type => MediaRecorder.isTypeSupported(type)
+    : () => false;
+  const types = mobileCompatibility.isMobile
+    ? ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus']
+    : ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+  return types.find(t => supportsType(t)) || '';
+}
+
+function createMediaRecorder(stream) {
+  if (typeof MediaRecorder === 'undefined') {
+    throw new Error('Este navegador não suporta gravação de áudio.');
+  }
+
+  const mimeType = getSupportedMimeType();
+  if (mimeType) {
+    try {
+      return {
+        recorder: new MediaRecorder(stream, { mimeType }),
+        mimeType,
+      };
+    } catch {}
+  }
+
+  return {
+    recorder: new MediaRecorder(stream),
+    mimeType: '',
+  };
 }
 
 // ============================================================
@@ -1141,6 +1186,8 @@ function friendlyError(err) {
   }
   if (name === 'NotFoundError' || msg.includes('not found'))
     return 'Nenhum microfone encontrado.\nVerifique se há um microfone conectado ao computador.';
+  if (msg.includes('não conseguiu gerar um áudio válido') || msg.includes('nao conseguiu gerar um audio valido'))
+    return 'O navegador do celular não conseguiu finalizar a gravação corretamente. Tente novamente ou use Chrome/Edge no Android ou Safari atualizado no iPhone.';
   if (msg.includes('nenhum áudio') || msg.includes('audio'))
     return 'A aba selecionada não está transmitindo áudio.\nCertifique-se de marcar "Compartilhar áudio da aba" no seletor.';
 
