@@ -51,6 +51,7 @@ let prompts          = [];
 let editingPromptId  = null;
 let autoSummaryRequestId = 0;
 let mobileCompatibility = { isMobile: false, captureMode: 'desktop' };
+let lastRecorderMimeType = '';
 
 // ── Elementos ────────────────────────────────────────────────
 const btnRecord          = document.getElementById('btnRecord');
@@ -658,9 +659,13 @@ btnRecord.addEventListener('click', async () => {
     const recorderSetup = createMediaRecorder(stream);
     audioChunks    = [];
     mediaRecorder  = recorderSetup.recorder;
+    lastRecorderMimeType = recorderSetup.mimeType || mediaRecorder.mimeType || '';
 
     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
-    mediaRecorder.onstop          = () => sendAudio(recorderSetup.mimeType || mediaRecorder.mimeType || '');
+    mediaRecorder.onstop          = () => {
+      cleanupActiveStreams();
+      sendAudio(lastRecorderMimeType || mediaRecorder?.mimeType || '');
+    };
     mediaRecorder.start(500);
 
     btnRecord.disabled         = true;
@@ -686,9 +691,10 @@ btnStop.addEventListener('click', stopRecording);
 
 function stopRecording() {
   if (!mediaRecorder) return;
-  mediaRecorder.stop();
-  activeStreams.forEach(s => s.getTracks().forEach(t => t.stop()));
-  activeStreams = [];
+  if (mediaRecorder.state === 'recording') {
+    try { mediaRecorder.requestData?.(); } catch {}
+    mediaRecorder.stop();
+  }
 
   stopTimer();
   cancelAnimationFrame(animFrameId);
@@ -746,7 +752,13 @@ async function sendAudio(mimeType) {
     showError(msg);
     processingCard.hidden = true;
     btnRecord.disabled    = false;
+    cleanupActiveStreams();
   }
+}
+
+function cleanupActiveStreams() {
+  activeStreams.forEach(s => s.getTracks().forEach(t => t.stop()));
+  activeStreams = [];
 }
 
 // ============================================================
