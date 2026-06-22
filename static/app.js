@@ -1079,28 +1079,24 @@ btnShare.addEventListener('click', async () => {
   if (!text) return showError('Nenhuma transcrição disponível para compartilhar.');
 
   if (typeof navigator.share === 'function') {
+    const file = new File([text], 'transcricao.txt', { type: 'text/plain' });
+    const canShareFile = typeof navigator.canShare === 'function'
+      && navigator.canShare({ files: [file] });
+    const shareAsFile = text.length > 12000 && canShareFile;
+    const shareData = shareAsFile
+      ? {
+          title: 'Transcrição da reunião',
+          text: 'Transcrição da reunião em anexo.',
+          files: [file],
+        }
+      : { title: 'Transcrição da reunião', text };
+
     try {
-      await navigator.share({ title: 'Transcrição da reunião', text });
+      await navigator.share(shareData);
       return;
     } catch (err) {
       if (err.name === 'AbortError') return;
-
-      const file = new File([text], 'transcricao.txt', { type: 'text/plain' });
-      if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({
-            title: 'Transcrição da reunião',
-            text: 'Transcrição da reunião em anexo.',
-            files: [file],
-          });
-          return;
-        } catch (fileError) {
-          if (fileError.name === 'AbortError') return;
-          console.error('Erro ao compartilhar arquivo:', fileError);
-        }
-      } else {
-        console.error('Erro ao compartilhar texto:', err);
-      }
+      console.error('Erro ao abrir compartilhamento:', err);
     }
   }
 
