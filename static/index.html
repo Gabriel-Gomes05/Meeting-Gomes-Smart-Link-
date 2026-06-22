@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/style.css?v=4" />
+  <link rel="stylesheet" href="/style.css?v=5" />
 </head>
 <body>
   <header class="header">
@@ -215,11 +215,26 @@
             <p class="result-meta" id="resultMeta"></p>
           </div>
           <div class="result-actions">
-            <button class="btn-action" id="btnSave">Salvar</button>
-            <button class="btn-action" id="btnDownload">Baixar .txt</button>
-            <button class="btn-action" id="btnCopy">Copiar</button>
-            <button class="btn-action btn-action--share" id="btnShare">Compartilhar</button>
-            <button class="btn-action btn-action--danger" id="btnClear">Limpar</button>
+            <button class="btn-action btn-action--share" id="btnShare">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"/></svg>
+              Compartilhar
+            </button>
+            <button class="btn-action btn-action--copy" id="btnCopy">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copiar
+            </button>
+            <button class="btn-action btn-action--download" id="btnDownload">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5"/><path d="M5 21h14"/></svg>
+              Baixar .txt
+            </button>
+            <button class="btn-action btn-action--save" id="btnSave">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+              Salvar
+            </button>
+            <button class="btn-action btn-action--danger" id="btnClear">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2m3 0-1 15H6L5 6m5 4v7m4-7v7"/></svg>
+              Limpar
+            </button>
           </div>
         </div>
 
@@ -314,6 +329,6 @@
     <p>Powered by <strong>AssemblyAI</strong> · Resumos via <strong>Google Gemini</strong></p>
   </footer>
 
-  <script src="/app.js?v=4"></script>
+  <script src="/app.js?v=5"></script>
 </body>
 </html>
