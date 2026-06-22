@@ -75,6 +75,7 @@ const waveCanvas         = document.getElementById('waveCanvas');
 const waveformIdle       = document.getElementById('waveformIdle');
 const btnDownload        = document.getElementById('btnDownload');
 const btnCopy            = document.getElementById('btnCopy');
+const btnShare           = document.getElementById('btnShare');
 const btnClear           = document.getElementById('btnClear');
 const btnSave            = document.getElementById('btnSave');
 const summaryBlock       = document.getElementById('summaryBlock');
@@ -1009,56 +1010,117 @@ function renderResult(data, { skipSave = false } = {}) {
 // ============================================================
 //  Ações do resultado
 // ============================================================
-btnDownload.addEventListener('click', () => {
+function buildTranscriptionText({ includeTime = true } = {}) {
   const lines = [];
-  if (!summaryBlock.hidden) {
+  let transcriptLines = 0;
+
+  if (!summaryBlock.hidden && summaryList.children.length) {
     lines.push('=== RESUMO ===');
-    summaryList.querySelectorAll('li').forEach(li => lines.push(`• ${li.textContent}`));
+    summaryList.querySelectorAll('li').forEach(li => lines.push(`- ${li.textContent}`));
     lines.push('');
     lines.push('=== TRANSCRIÇÃO ===');
   }
+
   document.querySelectorAll('.utterance').forEach(el => {
     const speaker = el.querySelector('.speaker-name').textContent.trim();
     const time    = el.querySelector('.utterance-time').textContent.trim();
     const text    = el.querySelector('.utterance-text').textContent.trim();
-    lines.push(`[${time}] ${speaker}:\n${text}`);
+    lines.push(includeTime ? `[${time}] ${speaker}:\n${text}` : `${speaker}: ${text}`);
+    transcriptLines++;
   });
-  downloadText(lines.join('\n\n'), 'transcricao.txt');
+
+  if (!transcriptLines && lastFullText) lines.push(lastFullText.trim());
+  return lines.join('\n\n').trim();
+}
+
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand('copy');
+  textarea.remove();
+  if (!copied) throw new Error('Não foi possível copiar a transcrição.');
+}
+
+function showTemporaryButtonLabel(button, label, duration = 2500) {
+  const original = button.innerHTML;
+  button.textContent = label;
+  setTimeout(() => { button.innerHTML = original; }, duration);
+}
+
+btnDownload.addEventListener('click', () => {
+  const text = buildTranscriptionText();
+  if (!text) return showError('Nenhuma transcrição disponível para baixar.');
+  downloadText(text, 'transcricao.txt');
 });
 
 btnCopy.addEventListener('click', async () => {
-  const lines = [];
-  document.querySelectorAll('.utterance').forEach(el => {
-    const speaker = el.querySelector('.speaker-name').textContent.trim();
-    const text    = el.querySelector('.utterance-text').textContent.trim();
-    lines.push(`${speaker}: ${text}`);
-  });
-  await navigator.clipboard.writeText(lines.join('\n\n'));
-  const orig = btnCopy.innerHTML;
-  btnCopy.textContent = '✓ Copiado!';
-  setTimeout(() => { btnCopy.innerHTML = orig; }, 2000);
+  const text = buildTranscriptionText({ includeTime: false });
+  if (!text) return showError('Nenhuma transcrição disponível para copiar.');
+
+  try {
+    await copyTextToClipboard(text);
+    showTemporaryButtonLabel(btnCopy, 'Copiado!');
+  } catch (err) {
+    showError(err.message || 'Não foi possível copiar a transcrição.');
+  }
+});
+
+btnShare.addEventListener('click', async () => {
+  const text = buildTranscriptionText();
+  if (!text) return showError('Nenhuma transcrição disponível para compartilhar.');
+
+  if (typeof navigator.share === 'function') {
+    try {
+      await navigator.share({ title: 'Transcrição da reunião', text });
+      return;
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+
+      const file = new File([text], 'transcricao.txt', { type: 'text/plain' });
+      if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            title: 'Transcrição da reunião',
+            text: 'Transcrição da reunião em anexo.',
+            files: [file],
+          });
+          return;
+        } catch (fileError) {
+          if (fileError.name === 'AbortError') return;
+          console.error('Erro ao compartilhar arquivo:', fileError);
+        }
+      } else {
+        console.error('Erro ao compartilhar texto:', err);
+      }
+    }
+  }
+
+  try {
+    await copyTextToClipboard(text);
+    showTemporaryButtonLabel(btnShare, 'Copiado! Cole no app', 3500);
+  } catch (err) {
+    showError(err.message || 'Este navegador não permite compartilhar a transcrição.');
+  }
 });
 
 btnSave.addEventListener('click', async () => {
-  const lines = [];
-  if (!summaryBlock.hidden) {
-    lines.push('=== RESUMO ===');
-    summaryList.querySelectorAll('li').forEach(li => lines.push(`• ${li.textContent}`));
-    lines.push('');
-    lines.push('=== TRANSCRIÇÃO ===');
-  }
-  document.querySelectorAll('.utterance').forEach(el => {
-    const speaker = el.querySelector('.speaker-name').textContent.trim();
-    const time    = el.querySelector('.utterance-time').textContent.trim();
-    const text    = el.querySelector('.utterance-text').textContent.trim();
-    lines.push(`[${time}] ${speaker}:\n${text}`);
-  });
+  const text = buildTranscriptionText();
+  if (!text) return showError('Nenhuma transcrição disponível para salvar.');
 
   try {
     const res  = await fetch('/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: lines.join('\n\n') }),
+      body: JSON.stringify({ text }),
     });
     const data = await res.json();
     const orig = btnSave.innerHTML;
