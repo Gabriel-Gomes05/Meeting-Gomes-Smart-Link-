@@ -52,6 +52,9 @@ let editingPromptId  = null;
 let autoSummaryRequestId = 0;
 let mobileCompatibility = { isMobile: false, captureMode: 'desktop' };
 let lastRecorderMimeType = '';
+let wakeLockSentinel = null;
+let wakeLockRequestPending = false;
+let isRecording = false;
 
 // ── Elementos ────────────────────────────────────────────────
 const btnRecord          = document.getElementById('btnRecord');
@@ -92,6 +95,7 @@ const btnNewPrompt       = document.getElementById('btnNewPrompt');
 const promptList         = document.getElementById('promptList');
 const promptFormCard     = document.getElementById('promptFormCard');
 const geminiBanner       = document.getElementById('geminiBanner');
+const wakeLockWarning    = document.getElementById('wakeLockWarning');
 
 // ── Init ─────────────────────────────────────────────────────
 prompts = loadPrompts();
@@ -102,8 +106,72 @@ setupNavListeners();
 setupLibraryListeners();
 setupHistoryListeners();
 setupMobileCompatibility();
+setupWakeLock();
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
+
+// ============================================================
+//  Screen Wake Lock
+// ============================================================
+function setupWakeLock() {
+  const wakeLockSupported = 'wakeLock' in navigator && window.isSecureContext;
+  if (wakeLockWarning) wakeLockWarning.hidden = wakeLockSupported;
+
+  document.addEventListener('visibilitychange', handleWakeLockVisibilityChange);
+  window.addEventListener('pagehide', cleanupWakeLock);
+}
+
+async function requestWakeLock() {
+  if (!('wakeLock' in navigator) || !window.isSecureContext) {
+    console.warn('Wake Lock API nao suportada ou fora de um contexto seguro.');
+    return;
+  }
+
+  if ((wakeLockSentinel && !wakeLockSentinel.released) || wakeLockRequestPending) return;
+
+  wakeLockRequestPending = true;
+  try {
+    const sentinel = await navigator.wakeLock.request('screen');
+    if (!isRecording) {
+      await sentinel.release();
+      return;
+    }
+
+    wakeLockSentinel = sentinel;
+    sentinel.addEventListener('release', () => {
+      if (wakeLockSentinel === sentinel) wakeLockSentinel = null;
+      console.log('Wake Lock liberado.');
+    });
+    console.log('Wake Lock ativado.');
+  } catch (err) {
+    console.error('Erro ao ativar Wake Lock:', err);
+  } finally {
+    wakeLockRequestPending = false;
+  }
+}
+
+async function releaseWakeLock() {
+  const sentinel = wakeLockSentinel;
+  wakeLockSentinel = null;
+  if (!sentinel || sentinel.released) return;
+
+  try {
+    await sentinel.release();
+  } catch (err) {
+    console.error('Erro ao liberar Wake Lock:', err);
+  }
+}
+
+function handleWakeLockVisibilityChange() {
+  if (document.visibilityState === 'visible' && isRecording) {
+    void requestWakeLock();
+  }
+}
+
+function cleanupWakeLock() {
+  isRecording = false;
+  void releaseWakeLock();
+}
 
 // ============================================================
 //  Navegação entre views
@@ -663,10 +731,27 @@ btnRecord.addEventListener('click', async () => {
 
     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
     mediaRecorder.onstop          = () => {
+      isRecording = false;
+      void releaseWakeLock();
       cleanupActiveStreams();
       sendAudio(lastRecorderMimeType || mediaRecorder?.mimeType || '');
     };
+    mediaRecorder.onerror = event => {
+      isRecording = false;
+      void releaseWakeLock();
+      console.error('Erro no MediaRecorder:', event.error || event);
+    };
+    mediaRecorder.onpause = () => {
+      isRecording = false;
+      void releaseWakeLock();
+    };
+    mediaRecorder.onresume = () => {
+      isRecording = true;
+      void requestWakeLock();
+    };
     mediaRecorder.start(500);
+    isRecording = true;
+    void requestWakeLock();
 
     btnRecord.disabled         = true;
     btnRecord.classList.add('recording');
@@ -679,6 +764,9 @@ btnRecord.addEventListener('click', async () => {
     startTimer();
     drawWaveform();
   } catch (err) {
+    isRecording = false;
+    void releaseWakeLock();
+    cleanupActiveStreams();
     console.error(err);
     showError(friendlyError(err));
   }
@@ -690,6 +778,8 @@ btnRecord.addEventListener('click', async () => {
 btnStop.addEventListener('click', stopRecording);
 
 function stopRecording() {
+  isRecording = false;
+  void releaseWakeLock();
   if (!mediaRecorder) return;
   if (mediaRecorder.state === 'recording') {
     try { mediaRecorder.requestData?.(); } catch {}

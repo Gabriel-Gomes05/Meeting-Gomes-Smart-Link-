@@ -24,3 +24,4 @@ Aplicacao web com frontend estatico e backend FastAPI para transcricao de reunio
 - O arquivo `.env` nao vai para producao; configure as chaves no painel do Render.
 - A pasta `static/` ja e servida pelo FastAPI em producao.
 - A rota de status fica em `/health`.
+- Acesse o deploy pela URL `https://` fornecida pelo Render. O Screen Wake Lock usado durante a gravacao exige um contexto seguro (HTTPS; `localhost` tambem e aceito em desenvolvimento).
