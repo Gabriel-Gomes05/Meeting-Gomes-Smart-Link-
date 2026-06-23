@@ -55,6 +55,7 @@ let lastRecorderMimeType = '';
 let wakeLockSentinel = null;
 let wakeLockRequestPending = false;
 let isRecording = false;
+let serverHeartbeatInterval = null;
 
 // ── Elementos ────────────────────────────────────────────────
 const btnRecord          = document.getElementById('btnRecord');
@@ -171,7 +172,23 @@ function handleWakeLockVisibilityChange() {
 
 function cleanupWakeLock() {
   isRecording = false;
+  stopServerHeartbeat();
   void releaseWakeLock();
+}
+
+function startServerHeartbeat() {
+  stopServerHeartbeat();
+  serverHeartbeatInterval = setInterval(() => {
+    fetch('/health', { cache: 'no-store' }).catch(err => {
+      console.warn('Nao foi possivel manter o servidor ativo:', err);
+    });
+  }, 8 * 60 * 1000);
+}
+
+function stopServerHeartbeat() {
+  if (!serverHeartbeatInterval) return;
+  clearInterval(serverHeartbeatInterval);
+  serverHeartbeatInterval = null;
 }
 
 // ============================================================
@@ -733,25 +750,30 @@ btnRecord.addEventListener('click', async () => {
     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
     mediaRecorder.onstop          = () => {
       isRecording = false;
+      stopServerHeartbeat();
       void releaseWakeLock();
       cleanupActiveStreams();
       sendAudio(lastRecorderMimeType || mediaRecorder?.mimeType || '');
     };
     mediaRecorder.onerror = event => {
       isRecording = false;
+      stopServerHeartbeat();
       void releaseWakeLock();
       console.error('Erro no MediaRecorder:', event.error || event);
     };
     mediaRecorder.onpause = () => {
       isRecording = false;
+      stopServerHeartbeat();
       void releaseWakeLock();
     };
     mediaRecorder.onresume = () => {
       isRecording = true;
+      startServerHeartbeat();
       void requestWakeLock();
     };
     mediaRecorder.start(500);
     isRecording = true;
+    startServerHeartbeat();
     void requestWakeLock();
 
     btnRecord.disabled         = true;
@@ -766,6 +788,7 @@ btnRecord.addEventListener('click', async () => {
     drawWaveform();
   } catch (err) {
     isRecording = false;
+    stopServerHeartbeat();
     void releaseWakeLock();
     cleanupActiveStreams();
     console.error(err);
@@ -780,6 +803,7 @@ btnStop.addEventListener('click', stopRecording);
 
 function stopRecording() {
   isRecording = false;
+  stopServerHeartbeat();
   void releaseWakeLock();
   if (!mediaRecorder) return;
   if (mediaRecorder.state === 'recording') {
@@ -1313,19 +1337,27 @@ function createMediaRecorder(stream) {
   }
 
   const mimeType = getSupportedMimeType();
+  const audioBitsPerSecond = mobileCompatibility.isMobile ? 48000 : 64000;
   if (mimeType) {
     try {
       return {
-        recorder: new MediaRecorder(stream, { mimeType }),
+        recorder: new MediaRecorder(stream, { mimeType, audioBitsPerSecond }),
         mimeType,
       };
     } catch {}
   }
 
-  return {
-    recorder: new MediaRecorder(stream),
-    mimeType: '',
-  };
+  try {
+    return {
+      recorder: new MediaRecorder(stream, { audioBitsPerSecond }),
+      mimeType: '',
+    };
+  } catch {
+    return {
+      recorder: new MediaRecorder(stream),
+      mimeType: '',
+    };
+  }
 }
 
 // ============================================================

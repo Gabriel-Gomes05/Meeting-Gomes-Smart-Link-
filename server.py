@@ -167,16 +167,14 @@ async def transcribe(
             _elapsed_seconds(request_started_at),
         )
 
-        # Polling com backoff: 1s nas primeiras 5 tentativas, 2s nas 5 seguintes, 3s após isso
+        # Consulta frequente reduz a espera entre a conclusao na API e a resposta ao usuario.
         poll_url = f"{BASE_URL}/transcript/{transcript_id}"
         poll_started_at = perf_counter()
-        for attempt in range(120):
-            if attempt < 5:
+        for attempt in range(180):
+            if attempt < 10:
                 await asyncio.sleep(1)
-            elif attempt < 10:
-                await asyncio.sleep(2)
             else:
-                await asyncio.sleep(3)
+                await asyncio.sleep(2)
             poll = await client.get(poll_url, headers=auth)
             data = poll.json()
             log.info(
