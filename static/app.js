@@ -1,10 +1,10 @@
 // ============================================================
-//  VOXMED — app.js
+//  VoxMed — app.js
 // ============================================================
 
 const SPEAKER_COLORS = [
-  '#2f3068','#0071bc','#009245','#f7931e',
-  '#65c8d0','#838bc5','#8cc63f','#c1272d',
+  '#222049','#5e93cc','#009245','#f7931e',
+  '#67b7d1','#7f86c3','#8cc63f','#c1272d',
 ];
 
 const DEFAULT_PROMPTS = [
@@ -1188,14 +1188,14 @@ function drawWaveform() {
     ctx.clearRect(0, 0, c.width, c.height);
 
     const grad = ctx.createLinearGradient(0, 0, c.width, 0);
-    grad.addColorStop(0,   '#2f3068');
-    grad.addColorStop(0.5, '#0071bc');
-    grad.addColorStop(1,   '#838bc5');
+    grad.addColorStop(0,   '#222049');
+    grad.addColorStop(0.5, '#5e93cc');
+    grad.addColorStop(1,   '#7f86c3');
 
     ctx.lineWidth   = 2.5 * devicePixelRatio;
     ctx.strokeStyle = grad;
     ctx.shadowBlur  = 12;
-    ctx.shadowColor = '#2f3068';
+    ctx.shadowColor = '#222049';
     ctx.beginPath();
 
     const step = c.width / buf.length;
@@ -1402,7 +1402,7 @@ function showError(msg) {
     ">
       <div style="color:#f43f5e;font-size:20px;flex-shrink:0;margin-top:1px">⚠</div>
       <div>
-        <div style="font-weight:700;font-size:14px;color:#2f3068;margin-bottom:4px">Erro</div>
+        <div style="font-weight:700;font-size:14px;color:#222049;margin-bottom:4px">Erro</div>
         <div style="font-size:13px;color:#64708d;line-height:1.6;white-space:pre-line">${escHtml(msg)}</div>
       </div>
       <button onclick="this.closest('#errorToast').remove()" style="
