@@ -1,10 +1,10 @@
 // ============================================================
-//  MeetingScript — app.js
+//  VOXMED — app.js
 // ============================================================
 
 const SPEAKER_COLORS = [
-  '#6c63ff','#f43f5e','#22c55e','#f59e0b',
-  '#38bdf8','#f472b6','#a3e635','#fb923c',
+  '#2f3068','#0071bc','#009245','#f7931e',
+  '#65c8d0','#838bc5','#8cc63f','#c1272d',
 ];
 
 const DEFAULT_PROMPTS = [
@@ -1164,14 +1164,14 @@ function drawWaveform() {
     ctx.clearRect(0, 0, c.width, c.height);
 
     const grad = ctx.createLinearGradient(0, 0, c.width, 0);
-    grad.addColorStop(0,   '#6c63ff');
-    grad.addColorStop(0.5, '#a78bfa');
-    grad.addColorStop(1,   '#f472b6');
+    grad.addColorStop(0,   '#2f3068');
+    grad.addColorStop(0.5, '#0071bc');
+    grad.addColorStop(1,   '#838bc5');
 
     ctx.lineWidth   = 2.5 * devicePixelRatio;
     ctx.strokeStyle = grad;
     ctx.shadowBlur  = 12;
-    ctx.shadowColor = '#6c63ff';
+    ctx.shadowColor = '#2f3068';
     ctx.beginPath();
 
     const step = c.width / buf.length;
@@ -1362,7 +1362,7 @@ function showError(msg) {
   toast.innerHTML = `
     <div style="
       position:fixed; bottom:28px; left:50%; transform:translateX(-50%);
-      background:#1e1020; border:1px solid rgba(244,63,94,.4);
+      background:#ffffff; border:1px solid rgba(193,39,45,.28);
       border-radius:14px; padding:16px 20px; max-width:440px; width:90%;
       box-shadow:0 8px 40px rgba(0,0,0,.6);
       display:flex; gap:14px; align-items:flex-start;
@@ -1370,11 +1370,11 @@ function showError(msg) {
     ">
       <div style="color:#f43f5e;font-size:20px;flex-shrink:0;margin-top:1px">⚠</div>
       <div>
-        <div style="font-weight:700;font-size:14px;color:#f1f1f5;margin-bottom:4px">Erro</div>
-        <div style="font-size:13px;color:#9ca3af;line-height:1.6;white-space:pre-line">${escHtml(msg)}</div>
+        <div style="font-weight:700;font-size:14px;color:#2f3068;margin-bottom:4px">Erro</div>
+        <div style="font-size:13px;color:#64708d;line-height:1.6;white-space:pre-line">${escHtml(msg)}</div>
       </div>
       <button onclick="this.closest('#errorToast').remove()" style="
-        background:none;border:none;color:#6b7299;cursor:pointer;
+        background:none;border:none;color:#64708d;cursor:pointer;
         font-size:18px;padding:0;margin-left:auto;flex-shrink:0;line-height:1
       ">×</button>
     </div>
