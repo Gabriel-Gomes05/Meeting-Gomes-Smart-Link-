@@ -1,4 +1,4 @@
-# Projeto Transcricao
+# VOXMED
 
 Aplicacao web com frontend estatico e backend FastAPI para transcricao de reunioes.
 
