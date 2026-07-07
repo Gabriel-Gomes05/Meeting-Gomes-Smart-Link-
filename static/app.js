@@ -56,6 +56,7 @@ let wakeLockSentinel = null;
 let wakeLockRequestPending = false;
 let isRecording = false;
 let serverHeartbeatInterval = null;
+const activeTranscriptionPolls = new Set();
 
 // ── Elementos ────────────────────────────────────────────────
 const btnRecord          = document.getElementById('btnRecord');
@@ -107,6 +108,7 @@ setupSourceListeners();
 setupNavListeners();
 setupLibraryListeners();
 setupHistoryListeners();
+resumePendingTranscriptions();
 setupMobileCompatibility();
 setupWakeLock();
 resizeCanvas();
@@ -250,6 +252,29 @@ async function requestSummary({ text, prompt, transcriptId, auto = false }) {
     if (!auto) showError(err.message || 'Nao foi possivel regenerar o resumo.');
   } finally {
     if (requestId === autoSummaryRequestId) btnRegenerateSum.disabled = false;
+  }
+}
+
+async function requestSummaryForHistory({ text, prompt, transcriptId, historyId }) {
+  if (!text || !transcriptId || !historyId) return;
+
+  try {
+    const res = await fetch('/summarize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text,
+        prompt,
+        transcript_id: transcriptId,
+      }),
+    });
+
+    if (!res.ok) return;
+    const data = await res.json();
+    updateStoredTranscription(historyId, { summary: data.summary || '' });
+    renderHistorico();
+  } catch (err) {
+    console.warn('Resumo em segundo plano falhou:', err);
   }
 }
 
@@ -550,10 +575,21 @@ function loadTranscriptions() {
   try { return JSON.parse(localStorage.getItem(TRANSCRIPTIONS_KEY) || '[]'); } catch { return []; }
 }
 
+function persistTranscriptions(list) {
+  while (list.length > 0) {
+    try { localStorage.setItem(TRANSCRIPTIONS_KEY, JSON.stringify(list)); return true; }
+    catch (e) { if (e.name === 'QuotaExceededError' && list.length > 1) list.pop(); else return false; }
+  }
+  localStorage.setItem(TRANSCRIPTIONS_KEY, JSON.stringify([]));
+  return true;
+}
+
 function saveTranscriptionToStorage(data) {
   const entry = {
-    id:             'tr-' + Date.now(),
+    id:             data.id || 'tr-' + Date.now(),
     savedAt:        new Date().toISOString(),
+    status:         data.status || 'completed',
+    statusMessage:  data.statusMessage || '',
     full_text:      data.full_text      || '',
     utterances:     data.utterances     || [],
     summary:        data.summary        || '',
@@ -564,10 +600,30 @@ function saveTranscriptionToStorage(data) {
   let list = loadTranscriptions();
   list.unshift(entry);
   if (list.length > MAX_TRANSCRIPTIONS) list.length = MAX_TRANSCRIPTIONS;
-  while (list.length > 0) {
-    try { localStorage.setItem(TRANSCRIPTIONS_KEY, JSON.stringify(list)); break; }
-    catch (e) { if (e.name === 'QuotaExceededError' && list.length > 1) list.pop(); else break; }
-  }
+  persistTranscriptions(list);
+  return entry;
+}
+
+function createPendingTranscription({ promptName = '' } = {}) {
+  return saveTranscriptionToStorage({
+    id: 'tr-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+    status: 'processing',
+    statusMessage: promptName ? `Resumo: ${promptName}` : '',
+  });
+}
+
+function updateStoredTranscription(id, patch) {
+  if (!id) return null;
+  const list = loadTranscriptions();
+  const index = list.findIndex(t => t.id === id);
+  if (index === -1) return null;
+  list[index] = {
+    ...list[index],
+    ...patch,
+    updatedAt: new Date().toISOString(),
+  };
+  persistTranscriptions(list);
+  return list[index];
 }
 
 function updateStoredTranscriptionSummary(transcriptId, summary) {
@@ -576,7 +632,7 @@ function updateStoredTranscriptionSummary(transcriptId, summary) {
   const entry = list.find(t => t.transcript_id === transcriptId);
   if (!entry) return;
   entry.summary = summary;
-  localStorage.setItem(TRANSCRIPTIONS_KEY, JSON.stringify(list));
+  persistTranscriptions(list);
 }
 
 function deleteTranscriptionFromStorage(id) {
@@ -633,28 +689,35 @@ function renderHistorico() {
     const dateStr    = d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const lastMs     = t.utterances?.length ? t.utterances[t.utterances.length - 1]?.end_ms : null;
     const duration   = lastMs != null ? formatMs(lastMs) : null;
+    const status     = t.status || 'completed';
+    const isDone     = status === 'completed';
+    const isError    = status === 'error';
+    const statusText = isDone ? 'Concluida' : isError ? 'Erro' : 'Processando';
     const preview    = t.full_text ? (t.full_text.length > 150 ? t.full_text.slice(0, 150) + '…' : t.full_text) : '';
     const firstBullet = t.summary
       ? (t.summary.split('\n').filter(l => l.trim())[0] || '').replace(/^[-•]\s*/, '')
       : '';
 
     return `
-      <div class="hist-card" data-id="${escAttr(t.id)}">
+      <div class="hist-card hist-card--${escAttr(status)}" data-id="${escAttr(t.id)}">
         <div class="hist-card-header">
           <div class="hist-card-meta">
             <span class="hist-date">${escHtml(dateStr)}</span>
             <span class="hist-badges">
+              <span class="hist-badge hist-status hist-status--${escAttr(status)}">${escHtml(statusText)}</span>
               ${t.speakers_found > 0 ? `<span class="hist-badge">${t.speakers_found} falante${t.speakers_found !== 1 ? 's' : ''}</span>` : ''}
               ${t.language_code  ? `<span class="hist-badge">${escHtml(t.language_code.toUpperCase())}</span>` : ''}
               ${duration         ? `<span class="hist-badge">${escHtml(duration)}</span>` : ''}
             </span>
           </div>
           <div class="hist-card-actions">
-            <button class="pcard-btn" data-action="load" data-id="${escAttr(t.id)}">Carregar</button>
+            <button class="pcard-btn" data-action="load" data-id="${escAttr(t.id)}" ${isDone ? '' : 'disabled'}>Carregar</button>
             <button class="pcard-btn pcard-btn--danger" data-action="delete" data-id="${escAttr(t.id)}">Excluir</button>
           </div>
         </div>
         ${preview     ? `<p class="hist-preview">${escHtml(preview)}</p>` : ''}
+        ${!preview && !isError ? `<p class="hist-preview">A IA esta transcrevendo esta reuniao em segundo plano. Voce ja pode iniciar outra gravacao.</p>` : ''}
+        ${isError     ? `<p class="hist-preview">${escHtml(t.statusMessage || 'Nao foi possivel concluir esta transcricao.')}</p>` : ''}
         ${firstBullet ? `<p class="hist-summary-preview">• ${escHtml(firstBullet)}</p>` : ''}
       </div>
     `;
@@ -663,7 +726,7 @@ function renderHistorico() {
 
 function loadHistoryEntry(id) {
   const entry = loadTranscriptions().find(t => t.id === id);
-  if (!entry) return;
+  if (!entry || entry.status === 'processing' || entry.status === 'error') return;
   renderResult(entry, { skipSave: true });
   showView('transcricao');
 }
@@ -753,7 +816,21 @@ btnRecord.addEventListener('click', async () => {
       stopServerHeartbeat();
       void releaseWakeLock();
       cleanupActiveStreams();
-      sendAudio(lastRecorderMimeType || mediaRecorder?.mimeType || '');
+      const chunksSnapshot = audioChunks.slice();
+      const mimeSnapshot = lastRecorderMimeType || mediaRecorder?.mimeType || '';
+      const pendingEntry = createPendingTranscription({ promptName: getSelectedPrompt()?.name || '' });
+      audioChunks = [];
+      btnRecord.disabled = false;
+      processingCard.hidden = true;
+      renderHistorico();
+      showView('historico');
+      void sendAudio({
+        chunks: chunksSnapshot,
+        mimeType: mimeSnapshot,
+        historyId: pendingEntry.id,
+        prompt: getSelectedPrompt(),
+        speakers: getSpeakers(),
+      });
     };
     mediaRecorder.onerror = event => {
       isRecording = false;
@@ -825,11 +902,12 @@ function stopRecording() {
 // ============================================================
 //  Enviar e transcrever
 // ============================================================
-async function sendAudio(mimeType) {
+async function sendAudio({ chunks, mimeType, historyId, prompt, speakers = '0' }) {
   try {
-    const blobType = audioChunks[0]?.type || mimeType || 'audio/webm';
-    const blob = new Blob(audioChunks, { type: blobType });
-    const totalSize = audioChunks.reduce((sum, chunk) => sum + (chunk.size || 0), 0);
+    const audioParts = chunks || [];
+    const blobType = audioParts[0]?.type || mimeType || 'audio/webm';
+    const blob = new Blob(audioParts, { type: blobType });
+    const totalSize = audioParts.reduce((sum, chunk) => sum + (chunk.size || 0), 0);
     if (!totalSize) {
       throw new Error('O navegador não conseguiu gerar um áudio válido no celular. Tente novamente ou use outro navegador.');
     }
@@ -837,10 +915,14 @@ async function sendAudio(mimeType) {
     const ext  = blob.type.includes('ogg') ? '.ogg' : blob.type.includes('mp4') ? '.mp4' : blob.type.includes('mpeg') ? '.mp3' : '.webm';
     const form = new FormData();
     form.append('audio', blob, `gravacao${ext}`);
-    const selectedPrompt = getSelectedPrompt();
+    const selectedPrompt = prompt || getSelectedPrompt();
 
-    setProcessing('Transcrevendo com IA...');
-    const url = `/transcribe?speakers=${getSpeakers()}&prompt=${encodeURIComponent(selectedPrompt?.text || '')}`;
+    updateStoredTranscription(historyId, {
+      status: 'processing',
+      statusMessage: 'Transcrevendo com IA...',
+    });
+    renderHistorico();
+    const url = `/transcriptions?speakers=${encodeURIComponent(speakers)}`;
     const res = await fetch(url, { method: 'POST', body: form });
 
     if (!res.ok) {
@@ -850,24 +932,99 @@ async function sendAudio(mimeType) {
     }
 
     const data = await res.json();
-    renderResult(data);
-    if (!data.summary && data.summary_pending && geminiConfigured) {
-      requestSummary({
-        text: data.full_text,
-        prompt: selectedPrompt?.text || '',
-        transcriptId: data.transcript_id,
-        auto: true,
-      });
-    }
+    updateStoredTranscription(historyId, {
+      status: 'processing',
+      statusMessage: 'Transcrevendo com IA...',
+      transcript_id: data.transcript_id || '',
+      prompt_text: selectedPrompt?.text || '',
+    });
+    renderHistorico();
+    void pollTranscription(historyId, data.transcript_id, selectedPrompt?.text || '');
   } catch (err) {
     console.error('[sendAudio]', err);
     const msg = err.message && err.message !== 'Failed to fetch'
       ? err.message
       : 'Não foi possível conectar ao servidor.\nVerifique se o servidor está rodando e tente novamente.';
+    updateStoredTranscription(historyId, {
+      status: 'error',
+      statusMessage: msg,
+    });
+    renderHistorico();
     showError(msg);
     processingCard.hidden = true;
     btnRecord.disabled    = false;
-    cleanupActiveStreams();
+  }
+}
+
+function resumePendingTranscriptions() {
+  loadTranscriptions()
+    .filter(item => item.status === 'processing' && item.transcript_id)
+    .forEach(item => {
+      void pollTranscription(item.id, item.transcript_id, item.prompt_text || '');
+    });
+}
+
+async function pollTranscription(historyId, transcriptId, promptText = '') {
+  if (!historyId || !transcriptId || activeTranscriptionPolls.has(historyId)) return;
+  activeTranscriptionPolls.add(historyId);
+
+  try {
+    for (let attempt = 0; attempt < 360; attempt++) {
+      const stored = loadTranscriptions().find(item => item.id === historyId);
+      if (!stored || stored.status !== 'processing') return;
+
+      const res = await fetch(`/transcriptions/${encodeURIComponent(transcriptId)}`, { cache: 'no-store' });
+      if (!res.ok) {
+        let detail = `Erro HTTP ${res.status}`;
+        try { detail = (await res.json()).detail || detail; } catch {}
+        throw new Error(detail);
+      }
+
+      const data = await res.json();
+      if (data.status === 'completed') {
+        updateStoredTranscription(historyId, {
+          status: 'completed',
+          statusMessage: '',
+          full_text: data.full_text || '',
+          utterances: data.utterances || [],
+          summary: data.summary || '',
+          language_code: data.language_code || '',
+          speakers_found: data.speakers_found || 0,
+          transcript_id: transcriptId,
+        });
+        renderHistorico();
+
+        if (!data.summary && data.summary_pending && geminiConfigured) {
+          void requestSummaryForHistory({
+            text: data.full_text,
+            prompt: promptText,
+            transcriptId,
+            historyId,
+          });
+        }
+        return;
+      }
+
+      if (data.status === 'error') {
+        throw new Error(data.error || 'Nao foi possivel concluir a transcricao.');
+      }
+
+      updateStoredTranscription(historyId, {
+        statusMessage: data.status === 'queued' ? 'Na fila de transcricao...' : 'Transcrevendo com IA...',
+      });
+      renderHistorico();
+      await new Promise(resolve => setTimeout(resolve, attempt < 10 ? 1500 : 3000));
+    }
+    throw new Error('Tempo limite de transcricao atingido.');
+  } catch (err) {
+    console.error('[pollTranscription]', err);
+    updateStoredTranscription(historyId, {
+      status: 'error',
+      statusMessage: err.message || 'Nao foi possivel acompanhar a transcricao.',
+    });
+    renderHistorico();
+  } finally {
+    activeTranscriptionPolls.delete(historyId);
   }
 }
 

@@ -104,6 +104,94 @@ def _elapsed_seconds(started_at: float) -> float:
     return round(perf_counter() - started_at, 2)
 
 
+def _assembly_payload(audio_url: str, speakers: int) -> dict:
+    payload: dict = {
+        "audio_url": audio_url,
+        "speaker_labels": True,
+        "speech_models": ["universal-3-pro"],
+        "language_detection": True,
+    }
+    if speakers > 0:
+        payload["speakers_expected"] = speakers
+    return payload
+
+
+def _completed_transcript(data: dict) -> dict:
+    utterances = [
+        {
+            "speaker": utterance["speaker"],
+            "text": utterance["text"],
+            "start_ms": utterance["start"],
+            "end_ms": utterance["end"],
+        }
+        for utterance in data.get("utterances") or []
+    ]
+    return {
+        "status": "completed",
+        "full_text": data.get("text", ""),
+        "utterances": utterances,
+        "language_code": data.get("language_code"),
+        "speakers_found": len({item["speaker"] for item in utterances}),
+        "transcript_id": data.get("id", ""),
+        "summary": "",
+        "summary_pending": bool(GROQ_KEY and data.get("text")),
+    }
+
+
+@app.post("/transcriptions")
+async def start_transcription(audio: UploadFile = File(...), speakers: int = 0):
+    """Envia o audio e devolve rapidamente um ID consultavel pelo frontend."""
+    if not API_KEY:
+        raise HTTPException(400, "ASSEMBLYAI_API_KEY nao configurada no arquivo .env")
+
+    auth = {"authorization": API_KEY}
+    content = await audio.read()
+    if not content:
+        raise HTTPException(400, "O arquivo de audio esta vazio.")
+
+    async with httpx.AsyncClient(timeout=300) as client:
+        upload = await client.post(f"{BASE_URL}/upload", headers=auth, content=content)
+        if upload.status_code != 200:
+            raise HTTPException(502, f"Falha no upload: {_extract_summary_error(upload)}")
+
+        create = await client.post(
+            f"{BASE_URL}/transcript",
+            headers={**auth, "content-type": "application/json"},
+            json=_assembly_payload(upload.json()["upload_url"], speakers),
+        )
+        if create.status_code != 200:
+            raise HTTPException(502, f"Falha ao criar transcricao: {_extract_summary_error(create)}")
+
+    transcript_id = create.json()["id"]
+    log.info("Trabalho de transcricao criado: %s", transcript_id)
+    return {"transcript_id": transcript_id, "status": "queued"}
+
+
+@app.get("/transcriptions/{transcript_id}")
+async def transcription_status(transcript_id: str):
+    """Consulta um trabalho sem manter uma requisicao HTTP longa aberta."""
+    if not API_KEY:
+        raise HTTPException(400, "ASSEMBLYAI_API_KEY nao configurada no arquivo .env")
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", transcript_id):
+        raise HTTPException(400, "ID de transcricao invalido.")
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        response = await client.get(
+            f"{BASE_URL}/transcript/{transcript_id}",
+            headers={"authorization": API_KEY},
+        )
+    if response.status_code != 200:
+        raise HTTPException(502, f"Falha ao consultar transcricao: {_extract_summary_error(response)}")
+
+    data = response.json()
+    status = data.get("status", "processing")
+    if status == "completed":
+        return _completed_transcript(data)
+    if status == "error":
+        return {"status": "error", "error": data.get("error") or "Falha na transcricao."}
+    return {"status": status, "transcript_id": transcript_id}
+
+
 @app.post("/transcribe")
 async def transcribe(
     audio: UploadFile = File(...),

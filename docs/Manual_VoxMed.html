@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Manual de Uso - VoxMed</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 14mm;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: #f4f4f4;
+      color: #222049;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 12.5px;
+      line-height: 1.55;
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    .page {
+      min-height: 269mm;
+      padding: 10mm 9mm;
+      break-after: page;
+      background: #ffffff;
+      border: 1px solid rgba(34, 32, 73, .08);
+    }
+
+    .page:last-child { break-after: auto; }
+
+    .cover {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background: linear-gradient(180deg, #ffffff 0%, #f4f4f4 100%);
+    }
+
+    .brand-card {
+      margin-top: 10mm;
+      padding: 18mm 16mm 14mm;
+      background: #222049;
+      color: #ffffff;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    .brand-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 18px;
+      margin-bottom: 11mm;
+    }
+
+    .mark {
+      width: 72px;
+      height: 72px;
+      border-radius: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #5e93cc;
+      background: rgba(255,255,255,.04);
+    }
+
+    .wordmark {
+      font-size: 42px;
+      line-height: 1;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+
+    .wordmark strong { color: #ffffff; }
+    .wordmark span { color: #5e93cc; font-weight: 400; }
+
+    .tagline {
+      border-top: 1px solid rgba(94,147,204,.35);
+      padding-top: 10px;
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.74);
+    }
+
+    .domain {
+      margin-top: 15mm;
+      font-size: 10px;
+      color: #5e93cc;
+    }
+
+    .cover-title {
+      margin-top: 14mm;
+      text-align: center;
+    }
+
+    .cover-title h1 {
+      font-size: 28px;
+      line-height: 1.12;
+      margin-bottom: 7px;
+    }
+
+    .cover-title p {
+      color: #64708d;
+      font-size: 13px;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #98a2b5;
+      font-size: 10px;
+      letter-spacing: .6px;
+      text-transform: uppercase;
+      border-top: 1px solid rgba(34,32,73,.1);
+      padding-top: 10px;
+    }
+
+    .section-kicker {
+      color: #5e93cc;
+      font-size: 10px;
+      letter-spacing: 2.6px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+
+    h2 {
+      font-size: 24px;
+      line-height: 1.16;
+      margin-bottom: 8px;
+      color: #222049;
+    }
+
+    .lead {
+      color: #64708d;
+      font-size: 13px;
+      margin-bottom: 16px;
+      max-width: 155mm;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .card {
+      border: 1px solid rgba(34,32,73,.12);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fbfcfe;
+      break-inside: avoid;
+    }
+
+    .card h3 {
+      font-size: 14px;
+      margin-bottom: 5px;
+      color: #222049;
+    }
+
+    .card p, .card li {
+      color: #64708d;
+    }
+
+    .steps {
+      display: grid;
+      gap: 9px;
+      counter-reset: step;
+    }
+
+    .step {
+      position: relative;
+      padding: 11px 12px 11px 44px;
+      background: #ffffff;
+      border: 1px solid rgba(34,32,73,.12);
+      border-radius: 8px;
+      break-inside: avoid;
+      counter-increment: step;
+    }
+
+    .step::before {
+      content: counter(step);
+      position: absolute;
+      left: 12px;
+      top: 12px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #222049;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .step h3 {
+      font-size: 13.5px;
+      margin-bottom: 3px;
+    }
+
+    ul {
+      margin: 7px 0 0 18px;
+      padding: 0;
+    }
+
+    li { margin: 3px 0; }
+
+    .note {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-left: 4px solid #5e93cc;
+      background: rgba(94,147,204,.1);
+      color: #4f5e7a;
+      border-radius: 6px;
+    }
+
+    .warning {
+      border-left-color: #f7931e;
+      background: rgba(247,147,30,.12);
+    }
+
+    .mini-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 12px;
+    }
+
+    .mini-table th,
+    .mini-table td {
+      border-bottom: 1px solid rgba(34,32,73,.1);
+      padding: 7px 6px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .mini-table th {
+      color: #222049;
+      background: #f4f4f4;
+      font-weight: 700;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: rgba(94,147,204,.13);
+      color: #222049;
+      font-size: 10.5px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .checklist {
+      columns: 2;
+      column-gap: 18px;
+      margin-top: 8px;
+    }
+
+    .checklist li {
+      break-inside: avoid;
+      margin-bottom: 6px;
+    }
+  </style>
+</head>
+<body>
+  <section class="page cover">
+    <div>
+      <div class="brand-card">
+        <div class="brand-row">
+          <div class="mark">
+            <svg width="54" height="54" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 15v2M7 10v12M11 7v18M15 10v12M19 14v4" stroke="rgba(244,244,244,.35)" stroke-width="3.2"/>
+              <path d="M25 7a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0v-8a3 3 0 0 0-3-3Z" stroke-width="1.8"/>
+              <path d="M31 16v2a6 6 0 0 1-12 0v-2" stroke-width="1.8"/>
+              <path d="M25 24v5M21 29h8" stroke-width="1.8"/>
+            </svg>
+          </div>
+          <div class="wordmark"><strong>Vox</strong><span>Med</span></div>
+        </div>
+        <div class="tagline">Transcricao medica inteligente</div>
+        <div class="domain">voxmed.com.br</div>
+      </div>
+
+      <div class="cover-title">
+        <h1>Manual de Uso</h1>
+        <p>Guia rapido para gravar, transcrever, resumir e organizar registros clinicos com o VoxMed.</p>
+      </div>
+    </div>
+    <div class="footer">
+      <span>Versao 01</span>
+      <span>Brasil, 2026</span>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="section-kicker">Visao geral</div>
+    <h2>O que o VoxMed faz</h2>
+    <p class="lead">O VoxMed captura audio, envia para transcricao com identificacao de falantes e permite gerar resumos com prompts personalizados. Ele foi pensado para apoiar documentacao medica, prontuarios, atas clinicas e registros de atendimento.</p>
+
+    <div class="grid">
+      <div class="card">
+        <h3>Transcricao</h3>
+        <p>Grave pelo microfone, por uma aba do navegador ou por ambas as fontes quando o navegador permitir.</p>
+      </div>
+      <div class="card">
+        <h3>Identificacao de falantes</h3>
+        <p>Informe a quantidade de participantes ou deixe em modo automatico para organizar as falas por pessoa.</p>
+      </div>
+      <div class="card">
+        <h3>Resumo com IA</h3>
+        <p>Use prompts prontos ou crie instrucoes especificas para gerar atas, tarefas, insights ou documentos clinicos.</p>
+      </div>
+      <div class="card">
+        <h3>Historico</h3>
+        <p>As transcricoes ficam salvas no navegador para consulta, reaproveitamento e exportacao posterior.</p>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>Importante:</strong> revise sempre o conteudo antes de copiar para documentos oficiais. A IA auxilia a documentacao, mas nao substitui a conferencia profissional.
+    </div>
+
+    <h2 style="margin-top:18px;">Antes de comecar</h2>
+    <table class="mini-table">
+      <tr>
+        <th>Item</th>
+        <th>Recomendacao</th>
+      </tr>
+      <tr>
+        <td>Navegador</td>
+        <td>Use Chrome, Edge, Firefox ou Safari atualizado. Para melhor compatibilidade, prefira Chrome ou Edge no computador.</td>
+      </tr>
+      <tr>
+        <td>Permissao</td>
+        <td>Autorize o uso do microfone quando o navegador solicitar.</td>
+      </tr>
+      <tr>
+        <td>Conexao</td>
+        <td>Mantenha internet estavel durante o envio e processamento do audio.</td>
+      </tr>
+      <tr>
+        <td>Ambiente</td>
+        <td>Reduza ruidos e aproxime o microfone do profissional para melhorar a qualidade da transcricao.</td>
+      </tr>
+    </table>
+  </section>
+
+  <section class="page">
+    <div class="section-kicker">Fluxo principal</div>
+    <h2>Como fazer uma transcricao</h2>
+    <p class="lead">Siga estes passos na aba <span class="badge">Transcricao</span>.</p>
+
+    <div class="steps">
+      <div class="step">
+        <h3>Escolha a fonte de audio</h3>
+        <p>Selecione <strong>Microfone</strong>, <strong>Aba / Sistema</strong> ou <strong>Ambos</strong>. No celular, em muitos navegadores, apenas o microfone fica disponivel.</p>
+      </div>
+      <div class="step">
+        <h3>Informe os participantes</h3>
+        <p>Use <strong>Auto</strong> se nao souber a quantidade exata. Quando souber, selecione 2, 3, 4, 5 ou 6+ para ajudar a separacao das falas.</p>
+      </div>
+      <div class="step">
+        <h3>Escolha o tipo de resumo</h3>
+        <p>No campo <strong>Resumo com</strong>, selecione o prompt que melhor combina com o registro: resumo executivo, ata, tarefas ou analise.</p>
+      </div>
+      <div class="step">
+        <h3>Inicie a gravacao</h3>
+        <p>Clique em <strong>Iniciar Gravacao</strong>. O cronometro e a onda de audio indicam que a captura esta ativa.</p>
+      </div>
+      <div class="step">
+        <h3>Finalize e transcreva</h3>
+        <p>Clique em <strong>Parar e Transcrever</strong>. A reuniao entra no <strong>Historico</strong> como processamento em segundo plano, liberando a tela para iniciar outra gravacao.</p>
+      </div>
+      <div class="step">
+        <h3>Revise o resultado</h3>
+        <p>Confira o resumo, leia as falas, renomeie participantes quando necessario e ajuste o conteudo antes de compartilhar ou arquivar.</p>
+      </div>
+    </div>
+
+    <div class="note warning">
+      Se capturar audio de uma aba do navegador, marque a opcao <strong>Compartilhar audio da aba</strong> no seletor do navegador.
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="section-kicker">Resultado</div>
+    <h2>O que fazer depois da transcricao</h2>
+    <p class="lead">Quando o processamento termina, o VoxMed mostra resumo, metadados, identificacao de falantes e a lista de falas.</p>
+
+    <table class="mini-table">
+      <tr>
+        <th>Acao</th>
+        <th>Quando usar</th>
+      </tr>
+      <tr>
+        <td><strong>Compartilhar</strong></td>
+        <td>Abre o compartilhamento do dispositivo quando disponivel. Em navegadores sem suporte, o texto pode ser copiado.</td>
+      </tr>
+      <tr>
+        <td><strong>Copiar</strong></td>
+        <td>Copia a transcricao para colar em prontuario, editor de texto, e-mail ou sistema interno.</td>
+      </tr>
+      <tr>
+        <td><strong>Baixar .txt</strong></td>
+        <td>Gera um arquivo de texto com a transcricao e o resumo.</td>
+      </tr>
+      <tr>
+        <td><strong>Salvar</strong></td>
+        <td>Salva o conteudo no servidor quando essa opcao estiver habilitada no ambiente.</td>
+      </tr>
+      <tr>
+        <td><strong>Limpar</strong></td>
+        <td>Remove o resultado atual da tela para iniciar uma nova transcricao.</td>
+      </tr>
+    </table>
+
+    <h2 style="margin-top:18px;">Renomear falantes</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Legenda de falantes</h3>
+        <p>Cada pessoa detectada aparece como <strong>Pessoa A</strong>, <strong>Pessoa B</strong> ou semelhante.</p>
+      </div>
+      <div class="card">
+        <h3>Editar nome</h3>
+        <p>Clique no icone de edicao ao lado do nome, digite o nome correto e pressione Enter ou clique fora do campo.</p>
+      </div>
+    </div>
+
+    <div class="note">
+      Para uso clinico, prefira nomes ou papeis claros, como "Medico", "Paciente", "Acompanhante" ou "Enfermagem", quando isso fizer sentido para o registro.
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="section-kicker">Prompts e historico</div>
+    <h2>Biblioteca de prompts</h2>
+    <p class="lead">A biblioteca controla como a IA deve resumir ou estruturar o conteudo. Use prompts padrao ou crie modelos para rotinas clinicas especificas.</p>
+
+    <div class="steps">
+      <div class="step">
+        <h3>Abrir biblioteca</h3>
+        <p>Clique em <strong>Biblioteca de Prompts</strong> no menu superior.</p>
+      </div>
+      <div class="step">
+        <h3>Criar prompt</h3>
+        <p>Clique em <strong>Novo Prompt</strong>, informe nome, descricao curta e as instrucoes que a IA deve seguir.</p>
+      </div>
+      <div class="step">
+        <h3>Usar prompt</h3>
+        <p>Escolha <strong>Usar</strong> no card do prompt desejado. Ele passa a ser o modelo ativo para os proximos resumos.</p>
+      </div>
+      <div class="step">
+        <h3>Regenerar resumo</h3>
+        <p>Na tela de resultado, selecione outro prompt e clique em <strong>Regenerar</strong> para criar uma nova versao do resumo.</p>
+      </div>
+    </div>
+
+    <h2 style="margin-top:18px;">Historico</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Consultar registros</h3>
+        <p>Acesse <strong>Historico</strong> para acompanhar transcricoes em processamento e visualizar registros concluidos automaticamente no navegador.</p>
+      </div>
+      <div class="card">
+        <h3>Reabrir ou limpar</h3>
+        <p>Ao encerrar uma gravacao, ela entra imediatamente no historico como "Processando". O botao de gravar fica livre para iniciar outras reunioes, e o VoxMed acompanha varias transcricoes ao mesmo tempo.</p>
+        <p>Se a pagina for atualizada, os trabalhos que ja receberam um ID continuam sendo acompanhados automaticamente ate a conclusao.</p>
+        <p>Use as acoes de cada card para revisar conteudos anteriores ou limpar historico quando necessario.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="section-kicker">Boas praticas</div>
+    <h2>Checklist de uso seguro</h2>
+    <p class="lead">Use este checklist antes, durante e depois das gravacoes.</p>
+
+    <ul class="checklist">
+      <li>Confirme se ha consentimento para gravar quando aplicavel.</li>
+      <li>Use ambiente silencioso e microfone proximo.</li>
+      <li>Evite falar ao mesmo tempo que outros participantes.</li>
+      <li>Revise nomes, termos tecnicos, medicamentos e datas.</li>
+      <li>Nao cole conteudo sem revisao em documentos oficiais.</li>
+      <li>Use prompts especificos para o tipo de documento desejado.</li>
+      <li>Em celular, mantenha a tela ativa e bateria suficiente.</li>
+      <li>Limpe resultados sensiveis quando nao precisar mais deles na tela.</li>
+    </ul>
+
+    <h2 style="margin-top:20px;">Solucoes rapidas</h2>
+    <table class="mini-table">
+      <tr>
+        <th>Problema</th>
+        <th>O que fazer</th>
+      </tr>
+      <tr>
+        <td>Microfone negado</td>
+        <td>Clique no cadeado da barra de endereco e permita acesso ao microfone. Depois recarregue a pagina.</td>
+      </tr>
+      <tr>
+        <td>Audio da aba nao aparece</td>
+        <td>Reinicie a gravacao e marque <strong>Compartilhar audio da aba</strong> no seletor do navegador.</td>
+      </tr>
+      <tr>
+        <td>Transcricao demorando</td>
+        <td>Aguarde o processamento, verifique a conexao e evite gravacoes muito longas quando possivel.</td>
+      </tr>
+      <tr>
+        <td>Resumo nao gerou</td>
+        <td>Verifique se a chave de resumo esta configurada no ambiente e tente <strong>Regenerar</strong>.</td>
+      </tr>
+      <tr>
+        <td>Resultado impreciso</td>
+        <td>Revise o texto, corrija termos clinicos e considere gravar em ambiente com menos ruido.</td>
+      </tr>
+    </table>
+
+    <div class="note">
+      O VoxMed apoia a documentacao. A responsabilidade pela revisao e uso final do conteudo permanece com o profissional ou equipe responsavel.
+    </div>
+
+    <div class="footer" style="margin-top:24px;">
+      <span>VoxMed</span>
+      <span>Transcricao medica inteligente</span>
+    </div>
+  </section>
+</body>
+</html>

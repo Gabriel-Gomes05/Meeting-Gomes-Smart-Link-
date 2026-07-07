@@ -1097,6 +1097,11 @@ body {
   border-color: rgba(34,32,73,.36);
 }
 
+.pcard-btn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
 .lib-hero {
   text-align: center;
   padding: 48px 24px 24px;
@@ -1217,6 +1222,15 @@ body {
 
 .hist-card:hover { border-color: rgba(34,32,73,.26); }
 
+.hist-card--processing {
+  border-color: rgba(94,147,204,.42);
+  box-shadow: 0 0 0 1px rgba(94,147,204,.08) inset;
+}
+
+.hist-card--error {
+  border-color: rgba(193,39,45,.32);
+}
+
 .hist-card-header {
   display: flex;
   align-items: flex-start;
@@ -1251,6 +1265,24 @@ body {
   background: var(--surface2);
   border: 1px solid var(--border);
   color: var(--text-dim);
+}
+
+.hist-status--processing {
+  color: #355f93;
+  background: rgba(94,147,204,.14);
+  border-color: rgba(94,147,204,.32);
+}
+
+.hist-status--completed {
+  color: #0f6b36;
+  background: rgba(0,146,69,.11);
+  border-color: rgba(0,146,69,.24);
+}
+
+.hist-status--error {
+  color: var(--red);
+  background: rgba(193,39,45,.08);
+  border-color: rgba(193,39,45,.24);
 }
 
 .hist-card-actions {
