@@ -30,7 +30,7 @@ DEFAULT_SUMMARY_PROMPT = (
     "Use o formato: cada ponto em uma linha começando com '- '."
 )
 
-app = FastAPI(title="Transcritor de Reunioes")
+app = FastAPI(title="Oratta - Da fala para a ata")
 
 app.add_middleware(
     CORSMiddleware,

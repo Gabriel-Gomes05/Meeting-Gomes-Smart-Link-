@@ -1,4 +1,6 @@
-# VOXMED
+# ORATTA
+
+**Da fala para a ata.**
 
 Aplicacao web com frontend estatico e backend FastAPI para transcricao de reunioes.
 

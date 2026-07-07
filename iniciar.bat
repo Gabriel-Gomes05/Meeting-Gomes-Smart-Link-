@@ -1,7 +1,7 @@
 @echo off
-title Transcritor de Reunioes
+title Oratta - Da fala para a ata
 echo ================================================
-echo   Transcritor de Reunioes
+echo   Oratta - Da fala para a ata
 echo ================================================
 echo.
 

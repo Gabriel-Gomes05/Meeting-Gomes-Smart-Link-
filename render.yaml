@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: voxmed
+    name: oratta
     env: python
     plan: free
     autoDeploy: true
