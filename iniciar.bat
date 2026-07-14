@@ -8,7 +8,7 @@ echo.
 REM Verifica se o arquivo .env existe
 if not exist ".env" (
     echo [AVISO] Arquivo .env nao encontrado!
-    echo Copie o arquivo .env.example para .env e adicione as chaves da AssemblyAI e do Gemini.
+    echo Copie o arquivo .env.example para .env e adicione as chaves da AssemblyAI e do Groq.
     echo.
     pause
     exit /b 1

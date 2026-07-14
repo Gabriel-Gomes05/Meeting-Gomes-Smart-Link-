@@ -2,15 +2,15 @@ import asyncio
 import logging
 import os
 import re
-from time import perf_counter
 from datetime import datetime
 from pathlib import Path
+from time import perf_counter
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, HTTPException, Request, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
 
 load_dotenv()
 
@@ -18,10 +18,20 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger(__name__)
 
 API_KEY = os.getenv("ASSEMBLYAI_API_KEY", "")
-GEMINI_KEY = os.getenv("GEMINI_API_KEY", "")
 GROQ_KEY = os.getenv("GROQ_API_KEY", "")
 BASE_URL = "https://api.assemblyai.com/v2"
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+MAX_AUDIO_BYTES = int(os.getenv("MAX_AUDIO_MB", "100")) * 1024 * 1024
+MAX_SAVE_CHARS = 1_000_000
+ALLOWED_AUDIO_TYPES = {
+    "audio/mp4",
+    "audio/mpeg",
+    "audio/ogg",
+    "audio/wav",
+    "audio/webm",
+    "video/webm",  # O compartilhamento de tela do navegador pode gerar WebM.
+    "application/octet-stream",  # Fallback usado por alguns navegadores móveis.
+}
 
 DEFAULT_SUMMARY_PROMPT = (
     "Gere um resumo em bullet points dos principais assuntos, "
@@ -32,12 +42,18 @@ DEFAULT_SUMMARY_PROMPT = (
 
 app = FastAPI(title="Oratta - Da fala para a ata")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+
+class SummaryRequest(BaseModel):
+    """Payload validado para geração de resumo."""
+
+    text: str = Field(min_length=1, max_length=MAX_SAVE_CHARS)
+    prompt: str = Field(default="", max_length=4_000)
+
+
+class SaveRequest(BaseModel):
+    """Payload validado para exportação local da transcrição."""
+
+    text: str = Field(min_length=1, max_length=MAX_SAVE_CHARS)
 
 
 def _extract_summary_error(resp: httpx.Response) -> str:
@@ -53,6 +69,22 @@ def _extract_summary_error(resp: httpx.Response) -> str:
         or f"HTTP {resp.status_code}"
     )
     return " ".join(str(message).split())[:300]
+
+
+async def _read_audio(audio: UploadFile) -> bytes:
+    """Valida tipo e tamanho sem manter uploads ilimitados em memória."""
+    content_type = (audio.content_type or "application/octet-stream").lower()
+    if content_type not in ALLOWED_AUDIO_TYPES:
+        raise HTTPException(415, f"Formato de áudio não suportado: {content_type}")
+
+    content = await audio.read(MAX_AUDIO_BYTES + 1)
+    await audio.close()
+    if not content:
+        raise HTTPException(400, "O arquivo de áudio está vazio.")
+    if len(content) > MAX_AUDIO_BYTES:
+        limit_mb = MAX_AUDIO_BYTES // (1024 * 1024)
+        raise HTTPException(413, f"O áudio excede o limite de {limit_mb} MB.")
+    return content
 
 
 _GROQ_RETRY_RE = re.compile(r"try again in (\d+\.?\d*)s", re.IGNORECASE)
@@ -139,15 +171,16 @@ def _completed_transcript(data: dict) -> dict:
 
 
 @app.post("/transcriptions")
-async def start_transcription(audio: UploadFile = File(...), speakers: int = 0):
+async def start_transcription(
+    audio: UploadFile = File(...),
+    speakers: int = Query(default=0, ge=0, le=10),
+):
     """Envia o audio e devolve rapidamente um ID consultavel pelo frontend."""
     if not API_KEY:
         raise HTTPException(400, "ASSEMBLYAI_API_KEY nao configurada no arquivo .env")
 
     auth = {"authorization": API_KEY}
-    content = await audio.read()
-    if not content:
-        raise HTTPException(400, "O arquivo de audio esta vazio.")
+    content = await _read_audio(audio)
 
     async with httpx.AsyncClient(timeout=300) as client:
         upload = await client.post(f"{BASE_URL}/upload", headers=auth, content=content)
@@ -195,7 +228,7 @@ async def transcription_status(transcript_id: str):
 @app.post("/transcribe")
 async def transcribe(
     audio: UploadFile = File(...),
-    speakers: int = 0,
+    speakers: int = Query(default=0, ge=0, le=10),
     prompt: str = "",
     include_summary: bool = False,
 ):
@@ -204,7 +237,7 @@ async def transcribe(
 
     request_started_at = perf_counter()
     auth = {"authorization": API_KEY}
-    content = await audio.read()
+    content = await _read_audio(audio)
     log.info(
         "Audio recebido: %s bytes | tipo: %s | falantes esperados: %s | leitura=%.2fs",
         len(content),
@@ -217,8 +250,9 @@ async def transcribe(
         upload_started_at = perf_counter()
         upload = await client.post(f"{BASE_URL}/upload", headers=auth, content=content)
         if upload.status_code != 200:
-            log.error("Upload falhou: %s", upload.text)
-            raise HTTPException(500, f"Falha no upload: {upload.text}")
+            detail = _extract_summary_error(upload)
+            log.error("Upload falhou (%s): %s", upload.status_code, detail)
+            raise HTTPException(502, f"Falha no upload: {detail}")
 
         audio_url = upload.json()["upload_url"]
         log.info(
@@ -244,8 +278,9 @@ async def transcribe(
             json=payload,
         )
         if create.status_code != 200:
-            log.error("Criacao falhou: %s", create.text)
-            raise HTTPException(500, f"Falha ao criar transcricao: {create.text}")
+            detail = _extract_summary_error(create)
+            log.error("Criacao falhou (%s): %s", create.status_code, detail)
+            raise HTTPException(502, f"Falha ao criar transcricao: {detail}")
 
         transcript_id = create.json()["id"]
         log.info(
@@ -329,20 +364,16 @@ async def transcribe(
 
 
 @app.post("/summarize")
-async def summarize(request: Request):
+async def summarize(body: SummaryRequest):
     request_started_at = perf_counter()
-    body = await request.json()
-    text = body.get("text", "")
-    prompt = (body.get("prompt") or "").strip() or DEFAULT_SUMMARY_PROMPT
+    text = body.text
+    prompt = body.prompt.strip() or DEFAULT_SUMMARY_PROMPT
 
     if not GROQ_KEY:
         raise HTTPException(
             503,
             "GROQ_API_KEY nao configurada no .env.",
         )
-
-    if not text:
-        raise HTTPException(400, "Forneca text no corpo da requisicao")
 
     try:
         async with httpx.AsyncClient(timeout=60) as client:
@@ -362,9 +393,8 @@ async def summarize(request: Request):
 
 
 @app.post("/save")
-async def save_transcription(request: Request):
-    body = await request.json()
-    text = body.get("text", "")
+async def save_transcription(body: SaveRequest):
+    text = body.text
 
     save_dir = Path("transcricoes")
     save_dir.mkdir(exist_ok=True)
@@ -382,7 +412,8 @@ def health():
     return {
         "status": "ok",
         "api_key_configured": bool(API_KEY),
-        "gemini_configured": bool(GROQ_KEY),
+        "summary_configured": bool(GROQ_KEY),
+        "summary_provider": "groq" if GROQ_KEY else None,
     }
 
 

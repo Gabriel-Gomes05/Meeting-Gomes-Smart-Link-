@@ -1,6 +1,10 @@
 venv/
+.venv/
 __pycache__/
 *.pyc
+.pytest_cache/
+.ruff_cache/
+.coverage
 
 .env
 
@@ -9,3 +13,5 @@ uvicorn.out.log
 uvicorn.err.log
 
 transcricoes/
+.DS_Store
+Thumbs.db

@@ -46,7 +46,7 @@ let audioCtxGlobal  = null;
 let speakerNames    = new Map();
 let lastTranscriptId = '';
 let lastFullText     = '';
-let geminiConfigured = false;
+let summaryConfigured = false;
 let prompts          = [];
 let editingPromptId  = null;
 let autoSummaryRequestId = 0;
@@ -97,7 +97,7 @@ const viewHistorico      = document.getElementById('viewHistorico');
 const btnNewPrompt       = document.getElementById('btnNewPrompt');
 const promptList         = document.getElementById('promptList');
 const promptFormCard     = document.getElementById('promptFormCard');
-const geminiBanner       = document.getElementById('geminiBanner');
+const summaryBanner      = document.getElementById('summaryBanner');
 const wakeLockWarning    = document.getElementById('wakeLockWarning');
 
 // ── Init ─────────────────────────────────────────────────────
@@ -285,7 +285,7 @@ async function checkApiHealth() {
   try {
     const res  = await fetch('/health');
     const data = await res.json();
-    geminiConfigured = data.gemini_configured || false;
+    summaryConfigured = data.summary_configured || false;
 
     if (data.api_key_configured) {
       apiStatus.className       = 'api-badge ok';
@@ -295,7 +295,7 @@ async function checkApiHealth() {
       apiStatusText.textContent = 'API Key ausente';
     }
 
-    if (geminiBanner) geminiBanner.hidden = geminiConfigured;
+    if (summaryBanner) summaryBanner.hidden = summaryConfigured;
   } catch {
     apiStatus.className       = 'api-badge err';
     apiStatusText.textContent = 'Servidor offline';
@@ -994,7 +994,7 @@ async function pollTranscription(historyId, transcriptId, promptText = '') {
         });
         renderHistorico();
 
-        if (!data.summary && data.summary_pending && geminiConfigured) {
+        if (!data.summary && data.summary_pending && summaryConfigured) {
           void requestSummaryForHistory({
             text: data.full_text,
             prompt: promptText,

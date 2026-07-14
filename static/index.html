@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/style.css?v=8" />
+  <link rel="stylesheet" href="/style.css?v=9" />
 </head>
 <body>
   <header class="header">
@@ -268,7 +268,7 @@
     </div>
 
     <div class="lib-main">
-      <div class="info-banner gemini-info" id="geminiBanner">
+      <div class="info-banner summary-info" id="summaryBanner">
         <span>
           Para usar resumos personalizados, configure <strong>GROQ_API_KEY</strong> no arquivo <code>.env</code>.
           Crie sua chave gratuita em <strong>console.groq.com</strong> e reinicie o servidor.
@@ -297,7 +297,7 @@
           </div>
           <div class="form-group">
             <label class="form-label" for="pfText">Prompt</label>
-            <textarea id="pfText" class="form-textarea" rows="5" placeholder="Escreva as instrucoes para o Gemini gerar o resumo..."></textarea>
+            <textarea id="pfText" class="form-textarea" rows="5" placeholder="Escreva as instruções para o Groq gerar o resumo..."></textarea>
           </div>
           <div class="form-actions">
             <button class="btn-save-prompt" id="btnSavePrompt">Salvar</button>
@@ -326,9 +326,9 @@
   </div>
 
   <footer class="footer">
-    <p>Powered by <strong>AssemblyAI</strong> · Resumos via <strong>Google Gemini</strong></p>
+    <p>Powered by <strong>AssemblyAI</strong> · Resumos via <strong>Groq</strong></p>
   </footer>
 
-  <script src="/app.js?v=10"></script>
+  <script src="/app.js?v=11"></script>
 </body>
 </html>
