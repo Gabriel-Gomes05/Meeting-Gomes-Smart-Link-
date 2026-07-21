@@ -1013,7 +1013,9 @@ async function pollTranscription(historyId, transcriptId, promptText = '') {
         statusMessage: data.status === 'queued' ? 'Na fila de transcricao...' : 'Transcrevendo com IA...',
       });
       renderHistorico();
-      await new Promise(resolve => setTimeout(resolve, attempt < 10 ? 1500 : 3000));
+      // A API pode concluir entre duas consultas. Intervalos menores fazem o
+      // resultado aparecer mais cedo sem manter uma requisicao longa aberta.
+      await new Promise(resolve => setTimeout(resolve, attempt < 10 ? 1000 : 2000));
     }
     throw new Error('Tempo limite de transcricao atingido.');
   } catch (err) {

@@ -67,6 +67,8 @@ Acesse `http://127.0.0.1:8000`. O endpoint de diagnóstico fica em `http://127.0
 | `ASSEMBLYAI_API_KEY` | Sim | Upload, diarização e transcrição de áudio. |
 | `GROQ_API_KEY` | Não | Geração de resumos. Sem ela, a transcrição continua funcionando. |
 | `MAX_AUDIO_MB` | Não | Tamanho máximo por upload. O padrão é `100`. |
+| `ASSEMBLYAI_SPEECH_MODEL` | Não | Modelo de transcrição. O padrão `universal-2` prioriza baixa latência; use `universal-3-pro` para priorizar precisão. |
+| `ASSEMBLYAI_LANGUAGE` | Não | Idioma do áudio. O padrão `pt` evita a etapa de detecção; use `auto` para detectar automaticamente. |
 | `PORT` | Produção | Porta injetada automaticamente pelo Render. |
 
 Nunca versione o arquivo `.env`. O repositório contém somente `.env.example`, sem credenciais reais.

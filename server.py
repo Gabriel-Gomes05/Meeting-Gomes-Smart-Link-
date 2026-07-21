@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 import re
+from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 from time import perf_counter
@@ -22,6 +23,8 @@ GROQ_KEY = os.getenv("GROQ_API_KEY", "")
 BASE_URL = "https://api.assemblyai.com/v2"
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 MAX_AUDIO_BYTES = int(os.getenv("MAX_AUDIO_MB", "100")) * 1024 * 1024
+ASSEMBLYAI_SPEECH_MODEL = os.getenv("ASSEMBLYAI_SPEECH_MODEL", "universal-2").strip()
+ASSEMBLYAI_LANGUAGE = os.getenv("ASSEMBLYAI_LANGUAGE", "pt").strip().lower()
 MAX_SAVE_CHARS = 1_000_000
 ALLOWED_AUDIO_TYPES = {
     "audio/mp4",
@@ -40,7 +43,20 @@ DEFAULT_SUMMARY_PROMPT = (
     "Use o formato: cada ponto em uma linha começando com '- '."
 )
 
-app = FastAPI(title="Oratta - Da fala para a ata")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Mantem conexoes com as APIs abertas entre upload e consultas de status."""
+    app.state.http = httpx.AsyncClient(
+        timeout=httpx.Timeout(300, connect=15),
+        limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
+    )
+    try:
+        yield
+    finally:
+        await app.state.http.aclose()
+
+
+app = FastAPI(title="Oratta - Da fala para a ata", lifespan=lifespan)
 
 
 class SummaryRequest(BaseModel):
@@ -140,9 +156,12 @@ def _assembly_payload(audio_url: str, speakers: int) -> dict:
     payload: dict = {
         "audio_url": audio_url,
         "speaker_labels": True,
-        "speech_models": ["universal-3-pro"],
-        "language_detection": True,
+        "speech_models": [ASSEMBLYAI_SPEECH_MODEL],
     }
+    if ASSEMBLYAI_LANGUAGE in {"", "auto"}:
+        payload["language_detection"] = True
+    else:
+        payload["language_code"] = ASSEMBLYAI_LANGUAGE
     if speakers > 0:
         payload["speakers_expected"] = speakers
     return payload
@@ -182,18 +201,18 @@ async def start_transcription(
     auth = {"authorization": API_KEY}
     content = await _read_audio(audio)
 
-    async with httpx.AsyncClient(timeout=300) as client:
-        upload = await client.post(f"{BASE_URL}/upload", headers=auth, content=content)
-        if upload.status_code != 200:
-            raise HTTPException(502, f"Falha no upload: {_extract_summary_error(upload)}")
+    client: httpx.AsyncClient = app.state.http
+    upload = await client.post(f"{BASE_URL}/upload", headers=auth, content=content)
+    if upload.status_code != 200:
+        raise HTTPException(502, f"Falha no upload: {_extract_summary_error(upload)}")
 
-        create = await client.post(
-            f"{BASE_URL}/transcript",
-            headers={**auth, "content-type": "application/json"},
-            json=_assembly_payload(upload.json()["upload_url"], speakers),
-        )
-        if create.status_code != 200:
-            raise HTTPException(502, f"Falha ao criar transcricao: {_extract_summary_error(create)}")
+    create = await client.post(
+        f"{BASE_URL}/transcript",
+        headers={**auth, "content-type": "application/json"},
+        json=_assembly_payload(upload.json()["upload_url"], speakers),
+    )
+    if create.status_code != 200:
+        raise HTTPException(502, f"Falha ao criar transcricao: {_extract_summary_error(create)}")
 
     transcript_id = create.json()["id"]
     log.info("Trabalho de transcricao criado: %s", transcript_id)
@@ -208,11 +227,12 @@ async def transcription_status(transcript_id: str):
     if not re.fullmatch(r"[A-Za-z0-9_-]+", transcript_id):
         raise HTTPException(400, "ID de transcricao invalido.")
 
-    async with httpx.AsyncClient(timeout=30) as client:
-        response = await client.get(
-            f"{BASE_URL}/transcript/{transcript_id}",
-            headers={"authorization": API_KEY},
-        )
+    client: httpx.AsyncClient = app.state.http
+    response = await client.get(
+        f"{BASE_URL}/transcript/{transcript_id}",
+        headers={"authorization": API_KEY},
+        timeout=30,
+    )
     if response.status_code != 200:
         raise HTTPException(502, f"Falha ao consultar transcricao: {_extract_summary_error(response)}")
 
@@ -262,14 +282,7 @@ async def transcribe(
             _elapsed_seconds(request_started_at),
         )
 
-        payload: dict = {
-            "audio_url": audio_url,
-            "speaker_labels": True,
-            "speech_models": ["universal-3-pro"],
-            "language_detection": True,
-        }
-        if speakers > 0:
-            payload["speakers_expected"] = speakers
+        payload = _assembly_payload(audio_url, speakers)
 
         create_started_at = perf_counter()
         create = await client.post(
