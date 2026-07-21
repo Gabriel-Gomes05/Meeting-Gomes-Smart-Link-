@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: oratta
+    name: sintetiza
     env: python
     plan: free
     autoDeploy: true

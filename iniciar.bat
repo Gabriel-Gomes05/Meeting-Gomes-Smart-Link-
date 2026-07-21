@@ -1,7 +1,7 @@
 @echo off
-title Oratta - Da fala para a ata
+title Sintetiza - Da fala para a ata
 echo ================================================
-echo   Oratta - Da fala para a ata
+echo   Sintetiza - Da fala para a ata
 echo ================================================
 echo.
 

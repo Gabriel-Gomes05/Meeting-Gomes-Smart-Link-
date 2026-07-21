@@ -56,7 +56,7 @@ async def lifespan(app: FastAPI):
         await app.state.http.aclose()
 
 
-app = FastAPI(title="Oratta - Da fala para a ata", lifespan=lifespan)
+app = FastAPI(title="Sintetiza - Da fala para a ata", lifespan=lifespan)
 
 
 class SummaryRequest(BaseModel):

@@ -1,4 +1,4 @@
-# Oratta
+# Sintetiza
 
 > Da fala para a ata.
 
@@ -133,4 +133,4 @@ Microfone, compartilhamento nativo e Wake Lock dependem de HTTPS fora do `localh
 
 ## Manual
 
-O guia completo para usuários está em [docs/Manual_Oratta.pdf](docs/Manual_Oratta.pdf). A versão HTML editável fica no mesmo diretório.
+O guia completo para usuários está em [docs/Manual_Sintetiza.pdf](docs/Manual_Sintetiza.pdf). A versão HTML editável fica no mesmo diretório.
