@@ -89,9 +89,10 @@ def _extract_summary_error(resp: httpx.Response) -> str:
 
 async def _read_audio(audio: UploadFile) -> bytes:
     """Valida tipo e tamanho sem manter uploads ilimitados em memória."""
-    content_type = (audio.content_type or "application/octet-stream").lower()
-    if content_type not in ALLOWED_AUDIO_TYPES:
-        raise HTTPException(415, f"Formato de áudio não suportado: {content_type}")
+    # Compara só o tipo base: sem parâmetros (";codecs=opus"), sem espaços, em minúsculas.
+    base_type = (audio.content_type or "application/octet-stream").split(";", 1)[0].strip().lower()
+    if base_type not in ALLOWED_AUDIO_TYPES:
+        raise HTTPException(415, f"Formato de áudio não suportado: {base_type[:50]}")
 
     content = await audio.read(MAX_AUDIO_BYTES + 1)
     await audio.close()
