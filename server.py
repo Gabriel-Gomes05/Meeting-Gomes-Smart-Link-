@@ -73,18 +73,42 @@ class SaveRequest(BaseModel):
 
 
 def _extract_summary_error(resp: httpx.Response) -> str:
+    """Mensagem curta do provedor: aceita error como texto, objeto ou ausente; nunca levanta exceção."""
     try:
         data = resp.json()
     except ValueError:
-        data = {}
+        data = None
 
-    message = (
-        data.get("error", {}).get("message")
-        or data.get("message")
-        or resp.text.strip()
-        or f"HTTP {resp.status_code}"
-    )
+    message = None
+    if isinstance(data, dict):
+        error = data.get("error")
+        if isinstance(error, dict):
+            message = error.get("message")
+        elif isinstance(error, str):
+            message = error
+        message = message or data.get("message")
+
+    message = message or resp.text.strip() or f"HTTP {resp.status_code}"
     return " ".join(str(message).split())[:300]
+
+
+def _provider_json(resp: httpx.Response, what: str) -> dict:
+    """JSON de sucesso do provedor como objeto; qualquer outro formato vira 502 claro, nunca 500."""
+    try:
+        data = resp.json()
+    except ValueError:
+        data = None
+    if not isinstance(data, dict):
+        raise HTTPException(502, f"Resposta inesperada do provedor ao {what}.")
+    return data
+
+
+def _extract_provider_text(value) -> str:
+    """Texto curto de um campo error do provedor (texto ou objeto com message)."""
+    if isinstance(value, dict):
+        value = value.get("message")
+    text = value if isinstance(value, str) and value.strip() else "Falha na transcricao."
+    return " ".join(text.split())[:300]
 
 
 async def _read_audio(audio: UploadFile) -> bytes:
@@ -140,7 +164,7 @@ async def generate_summary(client: httpx.AsyncClient, text: str, prompt: str) ->
 
         try:
             return resp.json()["choices"][0]["message"]["content"]
-        except (KeyError, IndexError, TypeError):
+        except (ValueError, KeyError, IndexError, TypeError):
             detail = _extract_summary_error(resp)
             log.warning("Groq respondeu em formato inesperado: %s", detail)
             raise RuntimeError(f"Resposta inesperada do Groq: {detail}")
@@ -209,12 +233,14 @@ async def start_transcription(
     create = await client.post(
         f"{BASE_URL}/transcript",
         headers={**auth, "content-type": "application/json"},
-        json=_assembly_payload(upload.json()["upload_url"], speakers),
+        json=_assembly_payload(_provider_json(upload, "upload").get("upload_url", ""), speakers),
     )
     if create.status_code != 200:
         raise HTTPException(502, f"Falha ao criar transcricao: {_extract_summary_error(create)}")
 
-    transcript_id = create.json()["id"]
+    transcript_id = _provider_json(create, "criacao da transcricao").get("id")
+    if not transcript_id:
+        raise HTTPException(502, "Resposta inesperada do provedor ao criar a transcricao.")
     log.info("Trabalho de transcricao criado: %s", transcript_id)
     return {"transcript_id": transcript_id, "status": "queued"}
 
@@ -236,12 +262,12 @@ async def transcription_status(transcript_id: str):
     if response.status_code != 200:
         raise HTTPException(502, f"Falha ao consultar transcricao: {_extract_summary_error(response)}")
 
-    data = response.json()
+    data = _provider_json(response, "consulta da transcricao")
     status = data.get("status", "processing")
     if status == "completed":
         return _completed_transcript(data)
     if status == "error":
-        return {"status": "error", "error": data.get("error") or "Falha na transcricao."}
+        return {"status": "error", "error": _extract_provider_text(data.get("error"))}
     return {"status": status, "transcript_id": transcript_id}
 
 
@@ -274,7 +300,9 @@ async def transcribe(
             log.error("Upload falhou (%s): %s", upload.status_code, detail)
             raise HTTPException(502, f"Falha no upload: {detail}")
 
-        audio_url = upload.json()["upload_url"]
+        audio_url = _provider_json(upload, "upload").get("upload_url")
+        if not audio_url:
+            raise HTTPException(502, "Resposta inesperada do provedor ao upload.")
         log.info(
             "Upload OK -> %s | upload=%.2fs | total=%.2fs",
             audio_url,
@@ -295,7 +323,9 @@ async def transcribe(
             log.error("Criacao falhou (%s): %s", create.status_code, detail)
             raise HTTPException(502, f"Falha ao criar transcricao: {detail}")
 
-        transcript_id = create.json()["id"]
+        transcript_id = _provider_json(create, "criacao da transcricao").get("id")
+        if not transcript_id:
+            raise HTTPException(502, "Resposta inesperada do provedor ao criar a transcricao.")
         log.info(
             "Transcricao criada: %s | create=%.2fs | total=%.2fs",
             transcript_id,
@@ -312,16 +342,18 @@ async def transcribe(
             else:
                 await asyncio.sleep(2)
             poll = await client.get(poll_url, headers=auth)
-            data = poll.json()
+            if poll.status_code != 200:
+                raise HTTPException(502, f"Falha ao consultar transcricao: {_extract_summary_error(poll)}")
+            data = _provider_json(poll, "consulta da transcricao")
             log.info(
                 "Poll #%d -> status: %s | polling=%.2fs | total=%.2fs",
                 attempt + 1,
-                data["status"],
+                data.get("status"),
                 _elapsed_seconds(poll_started_at),
                 _elapsed_seconds(request_started_at),
             )
 
-            if data["status"] == "completed":
+            if data.get("status") == "completed":
                 utterances = []
                 for utterance in data.get("utterances") or []:
                     utterances.append(
@@ -369,9 +401,9 @@ async def transcribe(
                     "summary_pending": bool(GROQ_KEY and full_text and not include_summary),
                 }
 
-            if data["status"] == "error":
-                log.error("AssemblyAI erro: %s", data.get("error"))
-                raise HTTPException(500, f"Erro na transcricao: {data.get('error')}")
+            if data.get("status") == "error":
+                log.error("Trabalho %s | status=error", transcript_id)
+                raise HTTPException(502, f"Erro na transcricao: {_extract_provider_text(data.get('error'))}")
 
         raise HTTPException(504, "Tempo limite de transcricao atingido.")
 
