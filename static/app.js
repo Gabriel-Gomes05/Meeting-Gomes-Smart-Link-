@@ -108,7 +108,8 @@ setupSourceListeners();
 setupNavListeners();
 setupLibraryListeners();
 setupHistoryListeners();
-resumePendingTranscriptions();
+// Retomada movida para o fim do script: as constantes de TRANSCRIPTIONS_KEY e do polling
+// ainda não existiam aqui, então loadTranscriptions() falhava em silêncio e nada retomava.
 setupMobileCompatibility();
 setupWakeLock();
 resizeCanvas();
@@ -653,6 +654,7 @@ function setupHistoryListeners() {
     if (!btn) return;
     const { action, id } = btn.dataset;
     if (action === 'load') loadHistoryEntry(id);
+    if (action === 'retry') retryTranscription(id);
     if (action === 'delete') {
       if (!confirm('Excluir esta transcrição do histórico?')) return;
       deleteTranscriptionFromStorage(id);
@@ -692,7 +694,8 @@ function renderHistorico() {
     const status     = t.status || 'completed';
     const isDone     = status === 'completed';
     const isError    = status === 'error';
-    const statusText = isDone ? 'Concluida' : isError ? 'Erro' : 'Processando';
+    const isLost     = !isDone && !isError && t.connection === 'lost';
+    const statusText = isDone ? 'Concluida' : isError ? 'Erro' : isLost ? 'Conexao perdida' : `Processando · há ${elapsedText(t)}`;
     const preview    = t.full_text ? (t.full_text.length > 150 ? t.full_text.slice(0, 150) + '…' : t.full_text) : '';
     const firstBullet = t.summary
       ? (t.summary.split('\n').filter(l => l.trim())[0] || '').replace(/^[-•]\s*/, '')
@@ -711,12 +714,13 @@ function renderHistorico() {
             </span>
           </div>
           <div class="hist-card-actions">
+            ${isLost ? `<button class="pcard-btn" data-action="retry" data-id="${escAttr(t.id)}">Tentar de novo</button>` : ''}
             <button class="pcard-btn" data-action="load" data-id="${escAttr(t.id)}" ${isDone ? '' : 'disabled'}>Carregar</button>
             <button class="pcard-btn pcard-btn--danger" data-action="delete" data-id="${escAttr(t.id)}">Excluir</button>
           </div>
         </div>
         ${preview     ? `<p class="hist-preview">${escHtml(preview)}</p>` : ''}
-        ${!preview && !isError ? `<p class="hist-preview">A IA esta transcrevendo esta reuniao em segundo plano. Voce ja pode iniciar outra gravacao.</p>` : ''}
+        ${!preview && !isError ? `<p class="hist-preview">${escHtml(t.statusMessage || 'A IA esta transcrevendo esta reuniao em segundo plano. Voce ja pode iniciar outra gravacao.')}</p>` : ''}
         ${isError     ? `<p class="hist-preview">${escHtml(t.statusMessage || 'Nao foi possivel concluir esta transcricao.')}</p>` : ''}
         ${firstBullet ? `<p class="hist-summary-preview">• ${escHtml(firstBullet)}</p>` : ''}
       </div>
@@ -937,6 +941,8 @@ async function sendAudio({ chunks, mimeType, historyId, prompt, speakers = '0' }
       statusMessage: 'Transcrevendo com IA...',
       transcript_id: data.transcript_id || '',
       prompt_text: selectedPrompt?.text || '',
+      startedAt: new Date().toISOString(),
+      connection: 'ok',
     });
     renderHistorico();
     void pollTranscription(historyId, data.transcript_id, selectedPrompt?.text || '');
@@ -956,6 +962,24 @@ async function sendAudio({ chunks, mimeType, historyId, prompt, speakers = '0' }
   }
 }
 
+function retryTranscription(id) {
+  const entry = loadTranscriptions().find(t => t.id === id);
+  if (!entry || entry.status !== 'processing' || !entry.transcript_id) return;
+  updateStoredTranscription(id, { connection: 'ok', statusMessage: 'Retomando a consulta...' });
+  renderHistorico();
+  void pollTranscription(id, entry.transcript_id, entry.prompt_text || '');
+}
+
+// Atualiza o tempo decorrido enquanto houver trabalho em processamento.
+function refreshProcessingElapsed() {
+  const active = loadTranscriptions().filter(t => t.status === 'processing');
+  if (active.length === 0) return;
+  renderHistorico();
+  if (!processingCard.hidden) {
+    processingTitle.textContent = `${active[0].statusMessage || 'Transcrevendo com IA...'} · há ${elapsedText(active[0])}`;
+  }
+}
+
 function resumePendingTranscriptions() {
   loadTranscriptions()
     .filter(item => item.status === 'processing' && item.transcript_id)
@@ -964,23 +988,78 @@ function resumePendingTranscriptions() {
     });
 }
 
+// Tempo decorrido desde o envio, em minutos (itens antigos usam savedAt).
+function elapsedText(t) {
+  const start = new Date(t.startedAt || t.savedAt).getTime();
+  return `${Math.max(0, Math.floor((Date.now() - start) / 60000))} min`;
+}
+
+const POLL_DEADLINE_MS = 3 * 60 * 60 * 1000; // prazo por janela de consulta (3 h)
+const POLL_MAX_FAILURES = 5;                   // falhas seguidas antes de "Conexão perdida"
+const pollSleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+// Erro definitivo: falha informada pelo provedor ou 4xx que não se resolve sozinho.
+class PollFatalError extends Error {}
+
+// Intervalo entre consultas: 2 s crescendo até 10 s.
+function pollIntervalMs(polls) { return Math.min(10000, 2000 + polls * 1000); }
+// Espera após falha de rede ou 5xx/429: 2 s, 4 s, 8 s, 16 s, 30 s.
+function pollRetryMs(failures) { return Math.min(30000, 2000 * 2 ** (failures - 1)); }
+function isFatalHttpStatus(status) { return status >= 400 && status < 500 && status !== 408 && status !== 429; }
+
+function providerErrorText(value) {
+  if (value && typeof value === 'object') value = value.message;
+  return typeof value === 'string' && value.trim() ? value : 'Nao foi possivel concluir a transcricao.';
+}
+
 async function pollTranscription(historyId, transcriptId, promptText = '') {
   if (!historyId || !transcriptId || activeTranscriptionPolls.has(historyId)) return;
   activeTranscriptionPolls.add(historyId);
 
+  // Cada abertura (envio, recarga ou "Tentar de novo") ganha sua janela de 3 h; o trabalho segue pendente.
+  const deadline = Date.now() + POLL_DEADLINE_MS;
+  let polls = 0;
+  let failures = 0;
+
   try {
-    for (let attempt = 0; attempt < 360; attempt++) {
+    while (true) {
       const stored = loadTranscriptions().find(item => item.id === historyId);
       if (!stored || stored.status !== 'processing') return;
 
-      const res = await fetch(`/transcriptions/${encodeURIComponent(transcriptId)}`, { cache: 'no-store' });
-      if (!res.ok) {
-        let detail = `Erro HTTP ${res.status}`;
-        try { detail = (await res.json()).detail || detail; } catch {}
-        throw new Error(detail);
+      if (Date.now() > deadline) {
+        updateStoredTranscription(historyId, { connection: 'ok', statusMessage: 'Ainda processando, volte mais tarde.' });
+        renderHistorico();
+        return;
       }
 
-      const data = await res.json();
+      let data;
+      try {
+        const res = await fetch(`/transcriptions/${encodeURIComponent(transcriptId)}`, { cache: 'no-store' });
+        if (!res.ok) {
+          let detail = `Erro HTTP ${res.status}`;
+          try { detail = (await res.json()).detail || detail; } catch {}
+          if (isFatalHttpStatus(res.status)) throw new PollFatalError(detail);
+          throw new Error(detail);
+        }
+        data = await res.json();
+      } catch (err) {
+        if (err instanceof PollFatalError) throw err;
+        failures++;
+        if (failures >= POLL_MAX_FAILURES) {
+          updateStoredTranscription(historyId, {
+            connection: 'lost',
+            statusMessage: 'Conexao perdida. O trabalho continua pendente.',
+          });
+          renderHistorico();
+          return;
+        }
+        await pollSleep(pollRetryMs(failures));
+        continue;
+      }
+
+      failures = 0;
+      polls++;
+
       if (data.status === 'completed') {
         updateStoredTranscription(historyId, {
           status: 'completed',
@@ -1006,18 +1085,17 @@ async function pollTranscription(historyId, transcriptId, promptText = '') {
       }
 
       if (data.status === 'error') {
-        throw new Error(data.error || 'Nao foi possivel concluir a transcricao.');
+        throw new PollFatalError(providerErrorText(data.error));
       }
 
       updateStoredTranscription(historyId, {
+        connection: 'ok',
         statusMessage: data.status === 'queued' ? 'Na fila de transcricao...' : 'Transcrevendo com IA...',
       });
       renderHistorico();
-      // A API pode concluir entre duas consultas. Intervalos menores fazem o
-      // resultado aparecer mais cedo sem manter uma requisicao longa aberta.
-      await new Promise(resolve => setTimeout(resolve, attempt < 10 ? 1000 : 2000));
+      // Sem prazo de erro: o intervalo cresce até 10 s e o trabalho continua pendente.
+      await pollSleep(pollIntervalMs(polls));
     }
-    throw new Error('Tempo limite de transcricao atingido.');
   } catch (err) {
     console.error('[pollTranscription]', err);
     updateStoredTranscription(historyId, {
@@ -1584,3 +1662,7 @@ function hexToRgba(hex, alpha) {
   const b = parseInt(hex.slice(5,7),16);
   return `rgba(${r},${g},${b},${alpha})`;
 }
+
+// Final do script: todas as constantes já foram inicializadas.
+resumePendingTranscriptions();
+setInterval(refreshProcessingElapsed, 15000);
